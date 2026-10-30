@@ -101,7 +101,7 @@ html:has(.nu-mobile-menu:not([hidden])){overflow:hidden}
 .st-awards{background:var(--surface);color:var(--on-surface)}
 .st-awards__list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(var(--space-10) * 2.25)),1fr));gap:var(--space-7) var(--layout-gutter);margin:var(--space-7) 0 0;padding:0;list-style:none}
 .st-award{display:grid;gap:var(--space-2);align-content:start;padding-top:var(--space-5);border-top:var(--border-hair) solid var(--line)}
-.st-award__mark{height:var(--space-8);width:auto;max-width:100%;object-fit:contain;object-position:left center;margin-bottom:var(--space-3)}
+.st-award__mark{height:var(--space-8);width:auto;max-width:min(100%,calc(var(--space-8) * 2.5));object-fit:contain;object-position:left center;margin-bottom:var(--space-3)}
 /* Venture portfolio rows: mark, name and description, industry. */
 .st-ventures{display:grid;margin:0;padding:0;list-style:none;border-top:var(--border-hair) solid var(--line)}
 .st-ventures>li[hidden]{display:none}
@@ -167,3 +167,83 @@ html.st-locked{overflow:hidden}
 .st-campaign-mark{display:block;width:auto;height:var(--space-9);max-width:100%;object-fit:contain;object-position:left center}
 .st-campaign-figure{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-3);margin:0}
 .st-campaign-figure .nu-numeral{display:inline}
+
+/* --- ea (External Affairs) --- */
+/* Offices on Our expertise: one OfficeProfile after another, a band's rhythm between them. */
+.ea-offices{display:grid;gap:var(--space-9)}
+/* Government relations: the office's own line and inbox under the group heading. */
+.ea-reach{display:grid;gap:var(--space-1);justify-items:start;margin-top:var(--space-3)}
+/* Team / Leadership SiblingNav sits on the content edge under the hero title, as the title's rule does. */
+.ea-sibling{margin-inline:var(--layout-edge)}
+/* Team by office: CardGrid --grouped asks for six compact cards beside the heading from a 1200px grid, but the content width tops out at
+   1184px (layout-max 1280 less two 48px edges), so it never gets there. Six from 1120px here; reported to the system. */
+@container (min-width:1120px){.ea-team .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(6,minmax(0,1fr))}}
+/* A ContactItem in a taller grid row (the main office's address beside its phone) stretched its own rows, dropping the value away
+   from its label. Reported to the system; held to the top here. */
+.st-contact .nu-contact-item,.ea-media .nu-contact-item{align-content:start}
+/* Leader names link to their bios (ea-13). FeaturedPerson has no linked-name style, so the underline shows on hover only, as StoryRow's titles do. */
+.ea-leaders .nu-featured-person__name a{text-decoration-color:transparent;transition:text-decoration-color var(--dur-fast) var(--ease-out)}
+.ea-leaders .nu-featured-person__name a:hover{text-decoration-color:currentColor}
+/* --- end ea --- */
+
+/* --- el (Experiential Learning) --- */
+/* Page glue for experientiallearning-staging only; every class here is el- prefixed or scoped to a system template class. */
+/* SiblingNav (el-07): the pathway switcher sits on the layout edge directly under the hero. */
+.el-sibling{padding:0 var(--layout-edge)}
+/* Opportunity groups (el-11), the CampusMap index pattern: a group label on a strong rule in columns 1–4 with its count, its LinkRows
+   from column 5 as subgrids, so a row's title holds columns 5–7 and its sentence starts on column 8 (three edges, whole columns apart). */
+.el-groups{display:grid;gap:var(--space-7);min-width:0}
+.el-group{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4) var(--layout-gutter);min-width:0}
+.el-group__head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-4);padding-top:var(--space-4);border-top:var(--border-rule) solid var(--on-surface)}
+.el-group__count{margin:0;font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-muted);font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
+.el-group__rows,.el-rows{display:grid;min-width:0}
+@media (min-width:960px){
+  .el-group{grid-template-columns:repeat(12,minmax(0,1fr));align-items:start}
+  .el-group__head{grid-column:1 / span 4;display:grid;justify-content:start;gap:var(--space-1)}
+  .el-group__rows{grid-column:5 / -1;grid-template-columns:subgrid}
+  .el-group__rows .nu-link-row{grid-column:1 / -1;grid-template-columns:subgrid;column-gap:var(--layout-gutter)}
+  .el-group__rows .nu-link-row__title{grid-column:1 / span 3}
+  .el-group__rows .nu-link-row__body{grid-column:4 / -1}
+  .el-group__rows .nu-link-row:first-child{border-top-color:transparent}
+}
+/* Four captioned photographs (Extracurricular) sit four across instead of leaving an orphan under three. */
+@media (min-width:960px){.nu-unit-home__claims-grid.el-claims--4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Seams on the Section hub ground: the finder and back-to-back split MediaTexts take one band of space, not two. */
+.nu-section-hub__band+.st-finder{padding-top:0}
+.nu-section-hub .nu-media-text:not(.nu-media-text--overlay)+.nu-media-text:not(.nu-media-text--overlay){padding-top:0}
+/* Home opener (el-05): the live cut-out student is a full-frame layer over the texture, so it crops with the photograph's own focal point. */
+.nu-hero-page--display .st-hero__figure{inset:0;width:100%;height:100%;max-width:none;object-fit:cover;object-position:var(--hero-page-focus-phone)}
+@media (min-width:960px){.nu-hero-page--display .st-hero__figure{object-position:var(--hero-page-focus)}}
+/* Finder on phones (el-16): the count and the Filters button stay in reach while the rows scroll. */
+@media (max-width:959px){.nu-section-hub .st-finder__bar{position:sticky;top:0;z-index:var(--z-sticky);margin-inline:calc(var(--layout-edge) * -1);padding:var(--space-2) var(--layout-edge);background:var(--surface);border-bottom:var(--border-hair) solid var(--line)}}
+/* --- end el --- */
+
+/* --- ge (Entrepreneurship) --- */
+/* Home HeroFilm: three November posters fill the lineup's columns (the system's lineup is four across). */
+.ge-hero-film .nu-hero-film__lineup{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ge-hero-film .nu-hero-film__title{max-width:13ch}
+/* The pathways row follows the Statement inside the same band. */
+.ge-paths{margin-top:var(--space-8)}
+/* Home network band (Night): the campus dot map under the section header, the StatBand under the map, Recognition after a full chapter gap. */
+.ge-network__map{margin-top:var(--space-7)}
+.ge-network .nu-stat-band{margin-top:var(--space-6)}
+.ge-network__awards{margin-top:var(--space-9)}
+/* Next Up SiblingNav under the opener: the row sits on the layout edge with the page's hairline under it. */
+.ge-sibling{padding:0 var(--layout-edge);background:var(--surface);color:var(--on-surface);border-bottom:var(--border-hair) solid var(--line)}
+.nu-campaign .ge-sibling+.nu-campaign__band{padding-top:var(--space-9)}
+/* Steps in a closed campaign: the stages every entrant has finished step back; the current one keeps full ink (ge-10). */
+.ge-steps--closed .nu-step:has(~ .nu-step[aria-current]) .nu-heading{color:var(--on-surface-2)}
+/* Official rules: clause numbers hang in the gutter so every heading starts on the reading edge (ge-09). */
+.nu-prose h2:has(>.ge-clause-num){position:relative}
+.ge-clause-num{position:absolute;right:100%;padding-inline-end:var(--space-3);font-variant-numeric:tabular-nums lining-nums;color:var(--on-surface-muted)}
+@media not all and (min-width:960px){.ge-clause-num{position:static;padding:0 var(--space-2) 0 0}}
+/* Launch Week chapters: 300 Connect and the hackathon each get a full-width band; the co-brand mark sits in the hackathon's head. */
+.ge-chapter+.ge-chapter{padding-top:0}
+.ge-chapter .nu-section-header__body>*+*{margin-top:var(--space-4)}
+.ge-chapter .nu-section-header__body>.nu-heading{margin-top:var(--space-6)}
+.ge-cobrand{justify-self:start;width:calc(var(--space-10) * 2.25);min-height:var(--space-9);margin:var(--space-2) 0}
+.ge-cobrand .nu-logo-tile__mark{max-width:100%;max-height:var(--space-8)}
+.ge-chapter .nu-timeline__head>.nu-button{justify-self:start}
+/* --- end ge --- */
+
+.st-nowrap { white-space: nowrap; }

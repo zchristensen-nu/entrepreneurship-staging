@@ -151,3 +151,137 @@ if (tocs.length) {
   heads.forEach((h) => seen.observe(h));
   for (const d of document.querySelectorAll('[data-toc] details')) d.addEventListener('click', (ev) => { if (ev.target.closest('a')) d.open = false; });
 }
+
+// --- el (Experiential Learning) ---
+// LogoWall --open: Show all N partners reveals the rest of the wall (el-13).
+for (const button of document.querySelectorAll('[data-el-show-all]')) {
+  button.addEventListener('click', () => {
+    const wall = document.getElementById(button.dataset.elShowAll);
+    for (const li of wall.querySelectorAll('[data-more]')) li.hidden = false;
+    button.closest('.nu-logo-wall__foot').remove();
+  });
+}
+// CampusMap --index (el-09): the Select (and a pin) choose the campus shown in the panel.
+const elCampuses = document.getElementById('el-campuses');
+if (elCampuses) {
+  const data = JSON.parse(elCampuses.textContent);
+  const map = elCampuses.previousElementSibling;
+  const select = map.querySelector('[data-el-campus]');
+  const panel = map.querySelector('.nu-campus-map__panel');
+  const pins = [...map.querySelectorAll('.nu-campus-map__pin')];
+  const photo = panel.querySelector('img');
+  const base = photo.getAttribute('src').replace(/[^/]+$/, '');
+  const show = (name) => {
+    const c = data[name];
+    if (!c) return;
+    photo.src = base + c.img;
+    panel.querySelector('h3').textContent = name;
+    panel.querySelector('.nu-meta-list span').textContent = c.place;
+    panel.querySelector('.nu-campus-map__body > p.nu-text').textContent = c.text;
+    const link = panel.querySelector('.nu-arrow-link');
+    link.href = c.href;
+    link.firstChild.textContent = `Explore ${name}`;
+    for (const pin of pins) pin.setAttribute('aria-pressed', String(pin.getAttribute('aria-label').includes(name)));
+  };
+  select.addEventListener('change', () => show(select.value));
+  for (const pin of pins) {
+    pin.addEventListener('click', () => {
+      const name = Object.keys(data).find((n) => pin.getAttribute('aria-label').includes(n));
+      if (name) { select.value = name; show(name); }
+    });
+  }
+}
+// --- end el ---
+
+// --- ge (Entrepreneurship) ---
+// ExpandingCards: exactly one card open. The toggle opens its card everywhere; hover (fine pointers, after a short delay) and focus open it too.
+// Clicks stop here so the kit's generic aria-controls disclosure never hides a card body.
+for (const row of document.querySelectorAll('[data-ge-cards]')) {
+  const toggles = [...row.querySelectorAll('.nu-expanding-cards__toggle')];
+  const open = (t) => { for (const x of toggles) x.setAttribute('aria-expanded', String(x === t)); };
+  row.addEventListener('click', (event) => {
+    const t = event.target.closest('.nu-expanding-cards__toggle');
+    if (t) { event.stopPropagation(); open(t); }
+  });
+  row.addEventListener('focusin', (event) => {
+    const card = event.target.closest('.nu-expanding-cards__card');
+    if (card && !event.target.matches('.nu-expanding-cards__toggle')) open(card.querySelector('.nu-expanding-cards__toggle'));
+  });
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    let timer;
+    for (const t of toggles) {
+      const card = t.closest('.nu-expanding-cards__card');
+      card.addEventListener('pointerenter', () => { clearTimeout(timer); timer = setTimeout(() => open(t), 180); });
+      card.addEventListener('pointerleave', () => clearTimeout(timer));
+    }
+  }
+}
+
+// Venture directory (DirectoryGrid in the finder layout): name search + industry checkboxes, 30 at a time, Grid / List, the phone drawer.
+for (const scope of document.querySelectorAll('[data-ge-dir]')) {
+  const panel = scope.querySelector('[data-ge-panel]');
+  const grid = scope.querySelector('[data-ge-grid]');
+  const items = [...scope.querySelectorAll('[data-ge-items] > li')];
+  const q = scope.querySelector('[data-ge-q]');
+  const count = scope.querySelector('[data-ge-count]');
+  const total = scope.querySelector('[data-ge-total]');
+  const badge = scope.querySelector('[data-ge-badge]');
+  const empty = scope.querySelector('[data-ge-empty]');
+  const more = scope.querySelector('[data-ge-more]');
+  const drawer = scope.querySelector('[data-drawer]');
+  const opener = scope.querySelector('[data-drawer-open]');
+  const page = Number(scope.dataset.page) || 30;
+  let limit = page;
+  const apply = () => {
+    const term = q.value.trim().toLowerCase();
+    const on = [...panel.querySelectorAll('input[data-filter]:checked')].map((c) => c.value);
+    let shown = 0;
+    for (const li of items) {
+      const inds = JSON.parse(li.dataset.terms).industries || [];
+      const ok = (!term || li.dataset.name.includes(term)) && (!on.length || on.some((v) => inds.includes(v)));
+      shown += ok;
+      li.hidden = !ok || shown > limit;
+    }
+    const visible = Math.min(shown, limit);
+    count.innerHTML = shown ? `Showing <b>1–${visible}</b> of <b>${shown}</b> ventures` : 'No ventures match';
+    total.textContent = shown;
+    badge.textContent = on.length + (term ? 1 : 0);
+    badge.hidden = !(on.length || term);
+    empty.hidden = shown > 0;
+    more.hidden = shown <= limit;
+  };
+  panel.addEventListener('submit', (event) => event.preventDefault());
+  panel.addEventListener('input', () => { limit = page; apply(); });
+  panel.addEventListener('change', () => { limit = page; apply(); });
+  panel.addEventListener('reset', () => { limit = page; setTimeout(apply); });
+  panel.addEventListener('click', (event) => {
+    const all = event.target.closest('[data-show-all]');
+    if (all) {
+      const open = all.getAttribute('aria-expanded') !== 'true';
+      all.setAttribute('aria-expanded', String(open));
+      for (const o of all.parentElement.querySelectorAll('[data-more]')) o.hidden = !open;
+    }
+    if (event.target.closest('[data-ge-q-clear]')) { q.value = ''; q.focus(); limit = page; apply(); }
+  });
+  more.addEventListener('click', () => { limit += page; apply(); });
+  for (const chip of scope.querySelectorAll('[data-ge-view]')) {
+    chip.addEventListener('click', () => {
+      for (const c of scope.querySelectorAll('[data-ge-view]')) c.setAttribute('aria-pressed', String(c === chip));
+      grid.classList.toggle('nu-directory-grid--list', chip.dataset.geView === 'list');
+      try { localStorage.setItem('ge-dir-view', chip.dataset.geView); } catch (e) { /* storage blocked: the default view stands */ }
+    });
+  }
+  try { if (localStorage.getItem('ge-dir-view') === 'list') scope.querySelector('[data-ge-view="list"]').click(); } catch (e) { /* default view */ }
+  const close = () => { drawer.removeAttribute('data-open'); opener.setAttribute('aria-expanded', 'false'); document.documentElement.classList.remove('st-locked'); opener.focus(); };
+  opener.addEventListener('click', (event) => {
+    event.stopPropagation();
+    drawer.setAttribute('data-open', '');
+    opener.setAttribute('aria-expanded', 'true');
+    document.documentElement.classList.add('st-locked');
+    q.focus();
+  });
+  scope.querySelector('[data-drawer-close]').addEventListener('click', close);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && drawer.hasAttribute('data-open')) close(); });
+  apply();
+}
+// --- end ge ---

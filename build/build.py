@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path.home() / "Projects/nu-site-kit"))
-from kit import (Site, band, breadcrumb, contact_items, document, e, facet_checks, facet_chips, finder, hero_page, hero_title,  # noqa: E402
+from kit import (CUR, Site, band, breadcrumb, contact_items, document, e, facet_checks, facet_chips, finder, hero_page, hero_title,  # noqa: E402
                  href, i, link_row, not_found, section_header)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +53,8 @@ def asset(path, logo=False):
     name = src.name
     im = Image.open(src)
     limit = 480 if logo else 1600
+    if logo and im.mode in ("RGBA", "LA", "P"):
+        im = im.crop(im.convert("RGBA").getchannel("A").getbbox())  # padded artwork makes marks read small
     if max(im.size) > limit:
         im.thumbnail((limit, limit))
     photo = not logo and src.suffix.lower() == ".png" and src.stat().st_size > 400_000 and im.mode in ("RGB", "RGBA", "P")
@@ -60,7 +62,7 @@ def asset(path, logo=False):
         name = src.stem + ".jpg"
         im = im.convert("RGB")
     out = OUT_IMG / name
-    if not out.exists():
+    if logo or not out.exists():
         OUT_IMG.mkdir(parents=True, exist_ok=True)
         if photo or src.suffix.lower() in (".jpg", ".jpeg"):
             im.convert("RGB").save(out, "JPEG", quality=82, optimize=True, progressive=True)
@@ -199,42 +201,143 @@ def offerings():
 
 
 def portfolio():
+    """DirectoryGrid in the finder layout: a name search and the industry list in the FilterPanel (a drawer below 960px), a dense logo
+    grid with a Grid / List toggle, 30 at a time. The kit's finder() has no search, so this is a local variant driven by the ge block in site.js."""
     items = sec("ventures__portfolio", 0)
     vs = sorted(R["partners"], key=lambda p: clean(p["name_as_shown"] or p["title"]).lower())
-    rows = ""
+    lis = ""
     for v in vs:
         name = clean(v["name_as_shown"] or v["title"])
-        ind = v.get("industries") or []
-        terms = json.dumps({"industries": ind})
+        ind = [t for t in (v.get("industries") or []) if not t.lower().startswith("lorem")]
         logo = (v.get("logo") or {}).get("local")
-        mark = pic(logo, "", "natural", logo=True) if logo else f'<span class="st-venture__initial" aria-hidden="true">{e(name[:1])}</span>'
+        tile = (f'<img class="nu-logo-tile__mark" src="{{{{base}}}}assets/img/{asset(logo, logo=True)}" alt="">' if logo
+                else f'<span class="nu-logo-tile__name">{e(name)}</span>')
         site_url = v.get("website") or ""
         bad = (not site_url) or site_url.startswith(LIVE)  # six ventures link to empty pages on the live site
-        title = e(name) if bad else f'<a class="st-venture__link" href="{e(site_url)}">{e(name)}</a>'
-        rows += f'''<li data-terms='{e(terms)}'><article class="st-venture">
-  <span class="st-venture__mark" data-mode="light">{mark}</span>
-  <div class="st-venture__body"><h3 class="nu-heading nu-heading--h4">{title}</h3><p class="nu-text nu-text--small">{e(clean(v["description"]))}</p></div>
-  <div class="st-venture__meta">{"".join(f'<span class="nu-tag">{e(t)}</span>' for t in ind)}</div>
+        title = e(name) if bad else f'<a class="nu-directory-grid__link" href="{e(site_url)}" target="_blank" rel="noopener">{e(name)}<span class="u-vh"> (opens in a new tab)</span></a>'
+        lis += f'''<li data-terms=\'{e(json.dumps({"industries": ind}))}\' data-name="{e(name.lower())}"><article class="nu-directory-grid__item">
+  <div class="nu-logo-tile">{tile}</div>
+  <div class="nu-directory-grid__body"><h3 class="nu-heading nu-heading--h5">{title}</h3>{f'<p class="nu-text nu-text--meta">{e(" · ".join(ind))}</p>' if ind else ""}</div>
+  <p class="nu-text nu-text--small nu-directory-grid__desc">{e(clean(v["description"]))}</p>
 </article></li>'''
     inds = sorted({t for v in vs for t in v.get("industries") or [] if not t.lower().startswith("lorem")})
-    hero = hero_page(texts(items, "h1")[0], items[0]["local"] and asset(items[0]["local"]), texts(items, "p")[-1], [(UNIT, "")])
-    hero = hero.replace(f'src="{{{{base}}}}assets/img/{asset(items[0]["local"])}"', f'src="{{{{base}}}}assets/img/{asset(items[0]["local"])}"')
-    site.page("ventures/portfolio", "Venture portfolio", texts(items, "p")[-1],
-              finder("Filter by industry", "ventures", facet_checks("industries", "Industry", inds, lambda v: sum(v in (r.get("industries") or []) for r in vs)), rows, "st-ventures", page=24),
-              "ventures/portfolio/", hero)
+    facet = facet_checks("industries", "Industries", inds, lambda x: sum(x in (r.get("industries") or []) for r in vs), visible=8)
+    n = len(vs)
+    finder_html = f'''<section class="st-band st-finder" aria-labelledby="finder-h" data-ge-dir data-page="30">
+  <div class="st-finder__layout">
+    <div class="st-finder__drawer" id="finder-drawer" data-drawer>
+      <form class="nu-filter-panel nu-filter-panel--sidebar" aria-labelledby="finder-h" data-ge-panel>
+        <div class="nu-filter-panel__head"><h2 class="nu-heading nu-heading--h4" id="finder-h">Find a venture</h2><button class="nu-filter-panel__clear" type="reset">Clear all</button></div>
+        <div class="nu-filter-panel__facet"><div class="nu-search-field" role="search">
+          <label class="u-vh" for="v-q">Search ventures by name</label>
+          <span class="nu-search-field__box"><input class="nu-input" id="v-q" type="search" placeholder="Venture name" autocomplete="off" data-ge-q>
+            <span class="nu-search-field__actions"><button class="nu-icon-button nu-search-field__clear" type="button" aria-label="Clear search" data-ge-q-clear>{i("close")}</button><span class="nu-icon-button" aria-hidden="true">{i("search")}</span></span></span>
+        </div></div>
+        {facet}
+        <div class="nu-filter-panel__foot st-finder__foot"><button class="nu-button" type="button" data-drawer-close>Show <span data-ge-total>{n}</span> ventures</button></div>
+      </form>
+    </div>
+    <div class="st-finder__results">
+      <section class="nu-directory-grid" aria-label="Ventures" data-ge-grid>
+        <div class="nu-list-toolbar">
+          <p class="nu-list-toolbar__count" role="status" data-ge-count>Showing <b>1–30</b> of <b>{n}</b> ventures</p>
+          <div class="nu-list-toolbar__controls">
+            <button class="nu-button nu-button--sm nu-button--outline st-finder__open" type="button" aria-controls="finder-drawer" aria-expanded="false" data-drawer-open>{i("filter")} Filters <span class="nu-filter-panel__badge" data-ge-badge hidden>0</span></button>
+            <div class="nu-chip-group" role="group" aria-label="View"><div class="nu-chip-group__chips">
+              <button class="nu-chip" type="button" aria-pressed="true" data-ge-view="grid">{i("grid")} Grid</button>
+              <button class="nu-chip" type="button" aria-pressed="false" data-ge-view="list">{i("list")} List</button>
+            </div></div>
+          </div>
+        </div>
+        <ul class="nu-directory-grid__items" role="list" data-ge-items>{lis}</ul>
+        <p class="nu-text" data-ge-empty hidden>No venture matches that name and industry. Clear one to see more.</p>
+        <div class="nu-directory-grid__foot"><button class="nu-button nu-button--outline" type="button" data-ge-more>Show more ventures</button></div>
+      </section>
+    </div>
+  </div>
+</section>'''
+    hero = hero_page(texts(items, "h1")[0], asset(items[0]["local"]), texts(items, "p")[-1], [(UNIT, "")])
+    site.page("ventures/portfolio", "Venture portfolio", texts(items, "p")[-1], finder_html, "ventures/portfolio/", hero)
+
+
+# ---------- shared pieces (ge: local variants; the kit stays untouched) ----------
+HALL = "img/Screenshot-2026-09-21-at-11.57.56-AM-1536x863-f4f0e3.png"  # the 300 Mass Ave. hall, from the Launch Week page
+DESK = "img/300MassAveDesk-scaled-0fa63d.jpg"
+PITCH = "img/Annabelle_Collette_ROUX_Venture_Showcase-153-1536x1025-4a6e05.jpg"
+LAUNCH = "300-mass-ave-open-house/"
+
+
+def mark(path, limit=1200):
+    """A sub-brand lockup: kept as a transparent PNG (asset() would turn a large PNG into a JPEG), at most `limit` px wide."""
+    src = ROOT / "build" / path
+    out = OUT_IMG / src.name
+    if not out.exists():
+        im = Image.open(src)
+        if im.width > limit:
+            im = im.resize((limit, round(im.height * limit / im.width)), Image.LANCZOS)
+        OUT_IMG.mkdir(parents=True, exist_ok=True)
+        im.save(out, optimize=True)
+    return "{{base}}assets/img/" + src.name
+
+
+def grouped_accordion(title, hid, items):
+    """The FAQ pattern (kept from the review): the group's name in columns 1–4 on the same rule as its rows from column 5."""
+    return (f'<section class="nu-accordion" aria-labelledby="{hid}"><div class="nu-accordion__groups"><div class="nu-accordion__group">'
+            f'<h2 class="nu-heading nu-heading--h4 nu-accordion__group-title" id="{hid}">{e(title)}</h2><div class="nu-accordion__items">{items}</div></div></div></section>')
+
+
+def statement(line, lead=None, link=None):
+    """Statement: one pull-line (two lines at most), the rest as a lead from column 5."""
+    a = f'<a class="nu-arrow-link" href="{href(link[1])}">{e(link[0])} {i("arrow")}</a>' if link else ""
+    body = f'<div class="nu-statement__body"><p class="nu-text nu-text--lead">{e(lead)}</p>{a}</div>' if lead else a
+    return f'<div class="nu-statement"><p class="nu-heading nu-heading--h1 nu-statement__line">{e(line)}</p>{body}</div>'
+
+
+def poster(title, url, image, caption):
+    return f'''<a class="nu-poster-card" href="{href(url)}">
+  <span class="nu-poster-card__frame" data-mode="dark"><img class="nu-image nu-image--fill" src="{{{{base}}}}assets/img/{asset(image)}" alt=""><span class="nu-scrim nu-scrim--poster"></span><span class="nu-poster-card__title">{e(title)}</span></span>
+  <span class="nu-text nu-text--meta nu-poster-card__caption">{e(caption)}</span>
+</a>'''
+
+
+def campus_map():
+    """The CampusMap's dot map and pins, lifted from the system's specimen as a picture of the network (the 14 campuses the stat names).
+    Decorative here: no Select, no panel, no selected pin, so nothing on it is interactive."""
+    from kit import DS, _block
+    src = (DS / "components/organisms/campus-map.html").read_text().split("<!--code-->")[0]
+    m = _block(src, '<div class="nu-campus-map__map"', "div")
+    m = re.sub(r'<button class="(nu-campus-map__pin[^"]*)"[^>]*?(style="[^"]*")[^>]*>', r'<span class="\1" \2>', m).replace("</button>", "</span>")
+    return m.replace('<div class="nu-campus-map__map"', '<div class="nu-campus-map__map" aria-hidden="true"', 1)
 
 
 # ---------- home ----------
 def home():
     h = sec("home", 0)
-    hero = hero_page(texts(h, "h1")[0], asset(next(c["local"] for c in h if c["kind"] == "image")), texts(h, "p")[-1],
-                     button=("Explore your options", "offerings/"))
+    # HeroFilm on its photograph (there is no film): the site's line, and what is happening in November as PosterCards.
+    posters = "".join(poster(*p) for p in [
+        ("300 Mass Ave. Launch Week", LAUNCH, HALL, "November 18–19"),
+        ("Next Up Founders Prize finals", NU, PITCH, "November 17–20"),
+        ("Hackathon finals", LAUNCH + "#h-hack", DESK, "November 12–19")])
+    hero = f'''<section class="nu-hero-film ge-hero-film" data-mode="dark" aria-labelledby="h-home">
+  <div class="nu-hero-film__media">
+    {pic(next(c["local"] for c in h if c["kind"] == "image"), "", "fill")}
+    <span class="nu-scrim nu-scrim--left"></span><span class="nu-scrim nu-scrim--scene"></span><span class="nu-scrim nu-scrim--grain"></span><span class="nu-scrim nu-scrim--full nu-hero-film__phone-scrim"></span>
+  </div>
+  <div class="nu-hero-film__stage">
+    <div class="nu-hero-film__copy">
+      <h1 class="nu-heading nu-heading--display-xl nu-hero-film__title" id="h-home">{e(texts(h, "h1")[0])}</h1>
+      <p class="nu-text nu-text--lead">{e(texts(h, "p")[-1])}</p>
+      <a class="nu-button" href="{href("offerings/")}">Explore your options {i("arrow")}</a>
+    </div>
+    <nav class="nu-hero-film__lineup" aria-label="Happening in November">{posters}</nav>
+  </div>
+</section>'''
     st = sec("home", 1)
     ps = texts(st, "p")
-    stats = "".join(f'<div class="nu-stat nu-stat--column"><p class="nu-numeral nu-numeral--xl">{e(v)}</p><p class="nu-stat__text">{e(l)}</p></div>' for v, l in zip(ps[1::2], ps[2::2]))
-    body = band(section_header(clean(texts(st, "h2")[0]), ps[0], hid="h-stats") + f'<div class="nu-stat-band"><div class="nu-stat-band__stats">{stats}</div></div>')
     pw = sec("home", 2)
-    body += band(f'<p class="st-statement st-statement--body">{e(texts(pw, "p")[0])}</p>', "st-band--statement")
+    first = texts(pw, "p")[0]
+    cut = first.index(" It’s experiential")
+    body = f'<section class="st-band" aria-labelledby="h-paths">{statement(first[:cut], first[cut + 1:])}'
     # three pathway blocks: label, title, text, button, image (image order on the live page varies)
     blocks, cur = [], {}
     for c in pw[1:]:
@@ -251,17 +354,25 @@ def home():
             blocks.append(cur)
             cur = {}
     imgs = [c["local"] for c in pw if c["kind"] == "image"]
+    # Three doors in one ExpandingCards row (22a's research row): the photo and a short name closed, the line and the way in open.
+    tags = ["Programs", "Venture portfolio", "Next Up Founders Prize"]
+    cards = ""
     for n, b in enumerate(blocks):
-        im = imgs[n]
-        body += f'''<section class="nu-media-text{" nu-media-text--reverse" if n % 2 else ""} st-tight" aria-labelledby="pw-{n}">
-  <figure class="nu-media-text__media">{pic(im)}</figure>
-  <div class="nu-media-text__copy">
-    <h2 class="nu-heading nu-heading--h2" id="pw-{n}">{e(b["title"])}</h2>
-    <p class="nu-text nu-text--meta">{e(b["label"])}</p>
-    <p class="nu-text">{e(b["text"])}</p>
-    <div class="nu-media-text__actions">{button(*b["button"])}</div>
-  </div>
-</section>'''
+        on = "true" if n == 0 else "false"
+        cards += f'''<li class="nu-expanding-cards__card" data-mode="dark">
+    {pic(imgs[n], "", "fill")}
+    <span class="nu-scrim nu-scrim--bottom"></span><span class="nu-scrim nu-scrim--poster"></span>
+    <button class="nu-expanding-cards__toggle" type="button" aria-expanded="{on}" aria-controls="pw-{n}"><span class="nu-expanding-cards__tag">{tags[n]}</span></button>
+    <div class="nu-expanding-cards__body" id="pw-{n}">
+      <h3 class="nu-heading nu-heading--h3">{e(b["title"])}</h3>
+      <p class="nu-text">{e(b["text"])}</p>
+      <a class="nu-arrow-link" href="{href(local(b["button"][1]))}">{e("About the prize" if n == 2 else b["button"][0])} {i("arrow")}</a>
+    </div>
+  </li>'''
+    body += f'<h2 class="u-vh" id="h-paths">Where to start</h2><ul class="nu-expanding-cards ge-paths" data-ge-cards>{cards}</ul></section>'
+    # The network on Night: what the ecosystem is, the 14 campuses on the map, the figures, then the recognition it has earned.
+    stats = "".join(f'<div class="nu-stat nu-stat--column"><p class="nu-numeral nu-numeral--xl">{e(v)}</p><p class="nu-stat__text">{e(l)}</p></div>' for v, l in zip(ps[1::2], ps[2::2]))
+    network = section_header(clean(texts(st, "h2")[0]), ps[0], hid="h-stats") + f'<div class="ge-network__map">{campus_map()}</div><div class="nu-stat-band"><div class="nu-stat-band__stats">{stats}</div></div>'
     # founders
     fo = sec("home", 3)
     people, cur = [], None
@@ -285,8 +396,8 @@ def home():
     <span class="nu-arrow-link nu-arrow-link--sm nu-arrow-link--external" aria-hidden="true">Read the story {i("external")}</span>
   </div>
 </article></li>'''
-    body += band(section_header(texts(fo, "h2")[0], hid="h-founders") + f'<ul class="st-program-grid" role="list">{cards}</ul>')
-    # awards: white marks, so the band is Night
+    founders = band(section_header(texts(fo, "h2")[0], hid="h-founders") + f'<ul class="st-program-grid" role="list">{cards}</ul>')
+    # awards: white marks, so they sit in the Night network band
     aw = sec("home", 4)
     awards, cur = [], None
     for c in aw:
@@ -297,54 +408,97 @@ def home():
             cur["p"].append(c["text"])
     tiles = "".join(f'''<li class="st-award"><img class="st-award__mark" src="{{{{base}}}}assets/img/{asset(a["img"], logo=True)}" alt="{e(a["p"][1])}" loading="lazy">
   <p class="nu-text"><strong>{e(a["p"][0].rstrip(":"))}</strong></p><p class="nu-text nu-text--small">{e(a["p"][1])}</p></li>''' for a in awards)
-    body += f'<section class="st-band st-awards" data-mode="dark" aria-labelledby="h-awards">{section_header("Recognition", hid="h-awards", split=False)}<ul class="st-awards__list" role="list">{tiles}</ul></section>'
+    body += f'''<section class="st-band ge-network" data-mode="dark" aria-labelledby="h-stats">{network}
+  <div class="ge-network__awards">{section_header("Recognition", hid="h-awards", split=False)}<ul class="st-awards__list" role="list">{tiles}</ul></div>
+</section>''' + founders
     site.page("", UNIT, PAGES["home"]["meta_description"], body, "", hero)
 
 
 # ---------- 300 Startup Hub ----------
 def hub():
     intro = sec("300-startup-hub", 1)
+    ops = sec("300-startup-hub", 6)
+    hours = [x.strip() for x in texts(ops, "p")[0].split("\n") if x.strip() and x.strip() != "Hours of Operation"]
+    addr = texts(ops, "p")[2].split("\n")
+    # VenueHeader: the 300 mark as the H1 over the hall, the statement, the tour, then address, hours and the way in on the first screen.
+    hero = f'''<header class="nu-venue-header" data-mode="dark">
+  <div class="nu-venue-header__stage">
+    <div class="nu-venue-header__media">
+      {pic(HALL, "", "fill")}
+      <span class="nu-scrim nu-scrim--left"></span><span class="nu-scrim nu-scrim--scene"></span><span class="nu-scrim nu-scrim--grain"></span><span class="nu-scrim nu-scrim--full nu-venue-header__phone-scrim"></span>
+    </div>
+    <div class="nu-venue-header__copy">
+      {breadcrumb([(UNIT, "")], "300 Startup Hub")}
+      <h1 class="nu-venue-header__title"><img class="nu-venue-header__mark" src="{mark(sec("300-startup-hub", 0)[0]["local"])}" alt="300 Startup Hub Boston"></h1>
+      <p class="nu-text nu-text--lead">{e(clean(texts(intro, "h3")[0]))}</p>
+      <a class="nu-button" href="#tour">Tour the space {i("arrow")}</a>
+    </div>
+  </div>
+  <dl class="nu-key-value nu-venue-header__facts">
+    <div class="nu-key-value__row"><dt>{i("location")}Address</dt><dd>{e(addr[0])}<span>{e(addr[1].replace("-5000", ""))}</span></dd></div>
+    <div class="nu-key-value__row"><dt>{i("clock")}Hours</dt><dd>{e(hours[0].rstrip(":").replace(" – ", "–"))}, {e(hours[1]).replace(" – ", "–")}<span>{e(hours[2]).replace(":", ",", 1).replace(" – ", "–")}</span></dd></div>
+    <div class="nu-key-value__row"><dt>{i("globe")}Getting here</dt><dd>{e(texts(ops, "p")[1].replace("Entrance", "entrance"))}<span>{e(next(x for x in texts(ops, "p") if x.startswith("No on-site")).rstrip("."))}</span></dd></div>
+  </dl>
+</header>'''
+    # The Founders Network: what membership connects you to, as claim rows on the reading edge.
     vals = sec("300-startup-hub", 2)
     pairs = list(zip(texts(vals, "h3"), texts(vals, "p")))
-    body = band(f'<p class="st-statement">{e(clean(texts(intro, "h3")[0]))}</p><div class="st-more"><p class="nu-text nu-text--lead">{e(texts(intro, "p")[0])}</p></div>', "st-band--statement")
-    body += band('<ul class="st-values" role="list">' + "".join(f'<li><h2 class="nu-heading nu-heading--h3">{e(clean(h))}</h2><p class="nu-text">{e(p)}</p></li>' for h, p in pairs) + "</ul>", "st-band--tight")
+    points = "".join(f'<li class="nu-point-list__item"><h3 class="nu-heading nu-heading--h4 nu-point-list__claim">{e(clean(h))}</h3><p class="nu-text nu-point-list__body">{e(p)}</p></li>' for h, p in pairs)
+    body = band(section_header("Northeastern’s Founders Network", texts(intro, "p")[0], hid="h-network-fn")
+                + f'<section class="nu-point-list" aria-labelledby="h-network-fn"><ul class="nu-point-list__items">{points}</ul></section>')
+    # The workspace: the four kinds of space as a 2x2 SpaceMosaic (photo, name, one line).
     ws = sec("300-startup-hub", 3)
-    body += band(section_header(clean(texts(ws, "h2")[0]), texts(ws, "p")[0], hid="h-space"), "st-band--tight")
-    labels, heads, paras, imgs = texts(ws, "text")[1:], texts(ws, "h3"), texts(ws, "p")[1:], [(c["local"], c.get("alt") or "") for c in ws if c["kind"] == "image"]
-    for n in range(len(heads)):
-        body += f'''<section class="nu-media-text{" nu-media-text--reverse" if n % 2 else ""} st-tight" aria-labelledby="ws-{n}">
-  <figure class="nu-media-text__media">{pic(imgs[n][0], imgs[n][1])}</figure>
-  <div class="nu-media-text__copy"><h3 class="nu-heading nu-heading--h2" id="ws-{n}">{e(heads[n])}</h3><p class="nu-text nu-text--meta">{e(labels[n])}</p><p class="nu-text">{e(paras[n])}</p></div>
-</section>'''
+    labels, paras, imgs = texts(ws, "text")[1:], texts(ws, "p")[1:], [(c["local"], c.get("alt") or "") for c in ws if c["kind"] == "image"]
+    tiles = "".join(f'''<li><figure class="nu-figure">{pic(imgs[n][0], imgs[n][1])}
+    <figcaption class="nu-space-mosaic__caption"><h3 class="nu-heading nu-heading--h4">{e(labels[n])}</h3><p class="nu-text">{e(paras[n])}</p></figcaption></figure></li>''' for n in range(len(labels)))
+    body += band(section_header(clean(texts(ws, "h2")[0]), texts(ws, "p")[0], hid="h-space") + f'<ul class="nu-space-mosaic">{tiles}</ul>')
+    # The 300 network: the other hubs, on Night (the page's one feature band after the opener).
     nw = sec("300-startup-hub", 4)
     rows = ""
     for c in nw:
         if c["kind"] == "link":
             m = re.match(r"(300 Startup Hub \| \w+)\s+(.*?)\s*→?$", clean(c["text"]))
-            rows += link_row(m.group(1), c["href"], m.group(2), "Visit", external=True)
-    soon = [(h, p) for h, p in zip(texts(nw, "h3"), texts(nw, "p")[2:])]
-    for h, p in soon:
-        rows += f'<article class="nu-link-row st-link-row--static"><h3 class="nu-heading nu-heading--h3 nu-link-row__title">{e(h)}</h3><div class="nu-link-row__body"><p class="nu-text">{e(p)}</p><span class="nu-tag">Coming soon</span></div></article>'
-    body += band(section_header(texts(nw, "h2")[0], clean(texts(nw, "p")[1]), hid="h-network") + f'<div class="st-rows">{rows}</div>')
-    body += band(staging_form(texts(sec("300-startup-hub", 5), "h3")[0], "hub"), "", None)
-    ops = sec("300-startup-hub", 6)
-    hours = texts(ops, "p")[0]
-    addr = texts(ops, "p")[2]
-    body += f'''<section class="st-band" aria-labelledby="h-ops">
-  <section class="nu-contact-block" aria-labelledby="h-ops">
-    <div class="nu-contact-block__label"><h2 class="nu-heading nu-heading--h4" id="h-ops">{e(texts(ops, "h3")[0])}</h2><p class="nu-text nu-text--small">{e(texts(ops, "p")[1])}</p></div>
-    <div class="nu-contact-block__body"><div class="nu-contact-block__items">
-      <address class="nu-contact-item">{i("location")}<span class="nu-contact-item__label">Address</span><span class="nu-contact-item__value">{e(addr).replace(chr(10), "<br>")}</span></address>
-      <div class="nu-contact-item">{i("clock")}<span class="nu-contact-item__label">Hours</span><span class="nu-contact-item__value">{"<br>".join(e(x) for x in hours.split(chr(10)) if x.strip() and x.strip() != "Hours of Operation")}</span></div>
-    </div>
-    <div class="st-accordion">{accordion(directions(ops), "hub-dir")}</div></div>
-  </section>
-</section>'''
-    site.page("300-startup-hub", "300 Startup Hub Boston", clean(texts(intro, "h3")[0]),
-              hero_title("300 Startup Hub Boston", None, [(UNIT, "")]) + body, "300-startup-hub/")
+            rows += link_row(m.group(1).replace(" | ", " "), c["href"], m.group(2), "Visit", external=True)
+    for h, p in zip(texts(nw, "h3"), texts(nw, "p")[2:]):
+        rows += f'<article class="nu-link-row st-link-row--static"><h3 class="nu-heading nu-heading--h3 nu-link-row__title">{e(h.replace(" | ", " "))}</h3><div class="nu-link-row__body"><p class="nu-text">{e(p)}</p><span class="nu-tag">Coming soon</span></div></article>'
+    body += f'<section class="st-band" data-mode="dark" aria-labelledby="h-network">{section_header(texts(nw, "h2")[0], clean(texts(nw, "p")[1]), hid="h-network")}<div class="st-rows">{rows}</div></section>'
+    body += f'<section class="st-band" id="tour" aria-label="Tour the space">{staging_form(texts(sec("300-startup-hub", 5), "h3")[0], "hub")}</section>'
+    body += band(grouped_accordion("Directions and parking", "h-ops", accordion(directions(ops), "hub-dir")))
+    site.page("300-startup-hub", "300 Startup Hub Boston", clean(texts(intro, "h3")[0]), body, "300-startup-hub/", hero)
 
 
 # ---------- Launch Week open house (event) ----------
+SESSION_TITLES = {  # the live agenda is in Title Case; the system sets sentence case
+    "Interactive Showcase of Global Entrepreneurship at Northeastern": "Interactive showcase of global entrepreneurship at Northeastern",
+    "Brewing Connections": "Brewing connections",
+    "From Lab to Launch: Commercialization Broken Down": "From lab to launch: commercialization broken down",
+    "Inside the Creator Economy: Brands, Audiences, and Businesses": "Inside the creator economy: brands, audiences, and businesses",
+    "Leaders @300: It’s Never Been Easier to Start a Company, and Never Been Harder to Scale One": "Leaders @300: It’s never been easier to start a company, and never been harder to scale one",
+    "The Quantum Opportunity: Building the Next Generation of Startups": "The quantum opportunity: building the next generation of startups",
+    "How to Raise Venture Capital: The Real Rules of How Investors Actually Think": "How to raise venture capital: the real rules of how investors actually think",
+    "Hackathon Finals": "Hackathon finals",
+}
+
+
+def speaker(p):
+    """'Name, role' agenda lines to (name, role); a class year (DMSB’76, E’26) stays with the name."""
+    lead = ""
+    for pre, lab in (("With ", ""), ("Facilitated by ", "Facilitator; ")):
+        if p.startswith(pre):
+            p, lead = p[len(pre):], lab
+    name, _, role = p.partition(", ")
+    m = re.match(r"^([A-Z]+’\d\d), (.*)$", role)
+    if m:
+        name, role = f"{name} {m.group(1)}", m.group(2)
+    role = lead + role[:1].upper() + role[1:] if not lead else lead + role
+    return name, role
+
+
+def speakers_html(people):
+    return '<ul class="nu-timeline-item__speakers">' + "".join(
+        f'<li class="nu-timeline-item__speaker"><span class="nu-timeline-item__speaker-name">{e(n)}</span><span class="nu-timeline-item__speaker-role">{e(r)}</span></li>' for n, r in people) + "</ul>"
+
+
 def open_house():
     top = sec("300-mass-ave-open-house", 1)
     reg = next(c["href"] for c in top if c["kind"] == "link")
@@ -353,9 +507,10 @@ def open_house():
   <li>{i("clock")}<span>9 a.m.–6 p.m.</span></li>
   <li>{i("location")}<span>{e(texts(top, "p")[0])}</span></li>
 </ul>'''
-    hero = hero_page("300 Mass Ave. Launch Week open house", asset(sec("300-mass-ave-open-house", 0)[0]["local"]), texts(top, "text")[0])
+    hero = hero_page("300 Mass Ave. Launch Week open house", asset(sec("300-mass-ave-open-house", 0)[0]["local"]))
     hero = hero.replace("</h1>", "</h1>" + meta, 1).replace("</div>\n</section>", f'<a class="nu-button nu-button--accent" href="{e(reg)}">Register now {i("external")}</a></div>\n</section>', 1)
-    body = band(f'<p class="st-statement st-statement--body">{e(texts(top, "p")[1])}</p>', "st-band--statement")
+    # Statement: the page's own line as the pull-line, the launch paragraph as its lead.
+    body = f'<section class="st-band" aria-label="About Launch Week">{statement(texts(top, "text")[0], texts(top, "p")[1])}</section>'
     ag = sec("300-mass-ave-open-house", 2)
     days, cur, item = [], None, None
     for c in ag[3:]:
@@ -375,39 +530,64 @@ def open_house():
     dates = {"Wednesday, November 18": "2026-11-18", "Thursday, November 19": "2026-11-19"}
     dhtml = ""
     for d in days:
-        lis = "".join(f'''<li class="nu-timeline-item"><span class="nu-timeline-item__date">{e(it["time"])}</span><span class="nu-timeline-item__rail" aria-hidden="true"></span>
-  <div class="nu-timeline-item__body"><h4 class="nu-heading nu-heading--h4">{e(it["title"])}</h4>{f'<p class="nu-text nu-text--meta">{e(it["tag"])}</p>' if it["tag"] else ""}{"".join(f'<p class="nu-text">{e(p)}</p>' for p in it["p"])}</div></li>''' for it in d["items"])
+        lis = ""
+        for it in d["items"]:
+            title = SESSION_TITLES.get(it["title"], it["title"])
+            tag, featured, text, people = "", False, "", []
+            if it["tag"] == "Featured event":
+                featured = True
+                tag = '<span class="nu-tag nu-tag--solid">Featured event</span>'
+                m = re.match(r"A conversation with (.+?), (.+?), (on .*)$", it["p"][0])
+                people = [(m.group(1), m.group(2)[:1].upper() + m.group(2)[1:])]
+                text = "A conversation " + m.group(3)
+            elif it["tag"]:
+                tag = f'<span class="nu-tag">{e(it["tag"][:1] + it["tag"][1:].lower())}</span>'
+                for p in it["p"]:
+                    p, _, rest = p.partition(" on what ")  # one speaker line carries the session’s description
+                    people.append(speaker(p))
+                    if rest:
+                        text = "On what " + rest
+            else:
+                text = " ".join(it["p"])
+            hcls = "nu-heading--h3" if featured else "nu-heading--h4"
+            lis += f'''<li class="nu-timeline-item{" nu-timeline-item--featured" if featured else ""}"{' id="leaders-300"' if featured else ""}><span class="nu-timeline-item__date">{e(it["time"])}</span><span class="nu-timeline-item__rail" aria-hidden="true"></span>
+  <div class="nu-timeline-item__body"><h4 class="nu-heading {hcls}">{e(title)}</h4>{tag}{f'<p class="nu-text">{e(text)}</p>' if text else ""}{speakers_html(people) if people else ""}</div></li>'''
         dhtml += f'<div class="nu-timeline__day"><h3 class="nu-heading nu-heading--h4 nu-timeline__day-title"><time datetime="{dates.get(d["day"], "")}">{e(d["day"])}</time></h3><ol class="nu-timeline__list">{lis}</ol></div>'
-    body += f'''<section class="st-band"><section class="nu-timeline nu-timeline--agenda" aria-labelledby="h-agenda">
+    body += f'''<section class="st-band" id="agenda"><section class="nu-timeline nu-timeline--agenda" aria-labelledby="h-agenda">
   <div class="nu-timeline__head"><h2 class="nu-heading nu-heading--h2" id="h-agenda">{e(texts(ag, "h2")[0])}</h2><p class="nu-text">{e(texts(ag, "p")[1])}</p></div>
   <div class="nu-timeline__days">{dhtml}</div>
 </section></section>'''
     fx = sec("300-mass-ave-open-house", 3)
     ps, lis = texts(fx, "p"), texts(fx, "li")
     topics, hack = lis[:10], lis[10:]
-    connect = f'''<section class="st-feature" aria-labelledby="h-connect">
-  <h2 class="nu-heading nu-heading--h2" id="h-connect">{e(texts(fx, "h2")[0])}</h2>
-  <ul class="nu-meta-list nu-meta-list--inline"><li>{e(ps[0])}</li><li>{e(ps[1])}</li><li>November 19, 9–11 a.m.</li></ul>
-  <p class="nu-text">{e(ps[2])}</p><p class="nu-text">{e(ps[3])}</p>
+    # 300 Connect: its own chapter, heading in columns 1–4, everything else on the reading edge.
+    connect_body = f'''<ul class="nu-meta-list nu-meta-list--inline"><li>{i("calendar")}<time datetime="2026-11-19T09:00">November 19, 9–11 a.m.</time></li><li>Open to all founders</li></ul>
+  <p class="nu-text">{e(ps[2])} {e(ps[3])}</p>
   <h3 class="nu-heading nu-heading--h4">{e(texts(fx, "h3")[1])}</h3><p class="nu-text">{e(ps[4])}</p>
   <ul class="st-tags" role="list">{"".join(f'<li><span class="nu-tag">{e(t)}</span></li>' for t in topics)}</ul>
-  <p class="nu-text nu-text--small">{e(ps[5])}</p>
-</section>'''
+  <p class="nu-text nu-text--small">{e(ps[5])}</p>'''
+    body += band(section_header(e(texts(fx, "h2")[0]), hid="h-connect", extra=connect_body), "ge-chapter")
+    # Hackathon: its own chapter as an index Timeline; the SCION co-brand, the deadline and the action in the head.
+    labels = {"CLOCK STARTS": "Clock starts", "WHEEL OF PITCHES": "Wheel of Pitches", "PRACTICE DEMOS": "Practice demos",
+              "DEMO DAY 1.0": "Demo Day 1.0", "THE 300 OPEN HOUSE": "The 300 open house"}
     rows = ""
     for t in hack:
-        m = re.match(r"^(Nov \d+(?:–\d+)?)([A-Z0-9 .]+?)((?:[A-Z][a-z]|A [a-z]).*)$", t)  # the description may start with the word "A"
-        d, label, desc = (m.group(1), m.group(2).strip().capitalize(), m.group(3)) if m else ("", "", t)
-        label = label.replace("300 open house", "300 Open House").replace("Demo day 1.0", "Demo Day 1.0")
-        rows += f'<li class="nu-timeline-item"><span class="nu-timeline-item__date">{e(d)}</span><span class="nu-timeline-item__rail" aria-hidden="true"></span><div class="nu-timeline-item__body"><h4 class="nu-heading nu-heading--h4">{e(label)}</h4><p class="nu-text">{e(desc)}</p></div></li>'
+        m = re.match(r"^(Nov\s\d+(?:–\d+)?)([A-Z0-9 .]+)((?:[A-Z][a-z]|A\s).*)$", " ".join(t.split()))
+        d, label, desc = m.group(1), labels[m.group(2).strip()], m.group(3)
+        rows += f'<li class="nu-timeline-item"><span class="nu-timeline-item__date">{e(d)}</span><span class="nu-timeline-item__rail" aria-hidden="true"></span><div class="nu-timeline-item__body"><h3 class="nu-heading nu-heading--h4">{e(label)}</h3><p class="nu-text">{e(desc)}</p></div></li>'
     apply = next(c for c in fx if c["kind"] == "link")
-    hackathon = f'''<section class="st-feature" aria-labelledby="h-hack">
-  <h2 class="nu-heading nu-heading--h2" id="h-hack">{e(texts(fx, "h2")[1])}</h2>
-  <p class="nu-text nu-text--lead">{e(ps[6])}</p><p class="nu-text">{e(ps[7])}</p>
-  <ol class="nu-timeline__list st-hack">{rows}</ol>
-  <p class="nu-text nu-text--small">{e(ps[8])}</p>
-  <div>{button("Apply to build", apply["href"])}</div>
-</section>'''
-    body += band(f'<div class="st-features">{connect}{hackathon}</div>')
+    logo = next(c["local"] for c in fx if c["kind"] == "image")
+    body += f'''<section class="st-band ge-chapter" aria-labelledby="h-hack"><section class="nu-timeline nu-timeline--index" aria-labelledby="h-hack" id="hackathon">
+  <div class="nu-timeline__head">
+    <h2 class="nu-heading nu-heading--h2" id="h-hack">{e(texts(fx, "h2")[1])}</h2>
+    <p class="nu-text nu-text--lead">{e(ps[6])}</p>
+    <p class="nu-text">{e(ps[7])}</p>
+    <div class="nu-logo-tile ge-cobrand"><img class="nu-logo-tile__mark" src="{mark(logo, 800)}" alt="Northeastern University and SCION Events"></div>
+    <p class="nu-text nu-text--small">{e(ps[8])}</p>
+    {button("Apply to build", apply["href"])}
+  </div>
+  <ol class="nu-timeline__list">{rows}</ol>
+</section></section>'''
     cta = sec("300-mass-ave-open-house", 4)
     body += f'''<section class="nu-action-band" data-mode="dark" aria-labelledby="h-join">
   <div class="nu-action-band__inner">
@@ -420,10 +600,7 @@ def open_house():
     q = next(p for p in ps if p.startswith("Contact "))
     m = re.match(r"Contact (.*?), (.*?): (\S+@\S+)", q)
     body += f'''<section class="st-band" aria-labelledby="h-park">
-  <section class="nu-contact-block" aria-labelledby="h-park">
-    <div class="nu-contact-block__label"><h2 class="nu-heading nu-heading--h4" id="h-park">Parking and directions</h2></div>
-    <div class="nu-contact-block__body"><div class="st-accordion">{accordion(directions(pk), "oh-dir")}</div></div>
-  </section>
+  {grouped_accordion("Parking and directions", "h-park", accordion(directions(pk), "oh-dir"))}
   <section class="nu-contact-block" aria-labelledby="h-q">
     <div class="nu-contact-block__label"><h2 class="nu-heading nu-heading--h4" id="h-q">Questions?</h2><p class="nu-text nu-text--small">{e(m.group(1))}, {e(m.group(2))}</p></div>
     <div class="nu-contact-block__body"><div class="nu-contact-block__items">{contact_items(email=m.group(3))}</div>
@@ -437,54 +614,81 @@ def open_house():
 NU = "ventures/next-up-2026/"
 
 
+NU_PAGES = [("Overview", NU), ("How it works", NU + "#h-how"), ("Dates", NU + "#h-dates"), ("FAQ", NU + "#h-faq"),
+            ("Rules", NU + "program-parameters-rules/"), ("Application guide", NU + "application-guide/")]
+
+
+def nu_nav(current):
+    """SiblingNav (SectionNav --horizontal): the campaign's own pages and chapters, the same row on every Next Up page."""
+    lis = "".join(f'<li><a class="nu-section-nav__link nu-nav-link" href="{href(u)}"{CUR if u == current else ""}>{e(l)}</a></li>' for l, u in NU_PAGES)
+    return f'''<div class="ge-sibling"><nav class="nu-section-nav nu-section-nav--horizontal" aria-label="Next Up Founders Prize">
+  <p class="nu-text nu-text--meta nu-section-nav__label">Next Up Founders Prize</p><ul class="nu-section-nav__list">{lis}</ul>
+</nav></div>'''
+
+
 def next_up():
     h = sec("ventures__next-up-2026", 0)
     hp = texts(h, "p")
     st = texts(sec("ventures__next-up-2026", 1), "p")
-    # Campaign template: Night opens with the campaign's own lockup, headline, status, headline figure and facts; the status Notice closes the opening.
-    lead = hp[1].split(". ")[0] + "."
-    facts = key_values([(st[1], st[2]), (st[3], st[4].replace("\n", " ")), (st[5], (st[6] + " " + st[7]).replace("\n", " "))], "nu-key-value--inline nu-hero-title__facts")
-    opener = f'''<header class="nu-hero-title st-campaign-hero" data-mode="dark">
+    # Campaign template: Night opens with the campaign's own lockup over the line, the status Tag and the headline figure over its facts;
+    # the status Notice closes the opening. The Submission page folds into the Notice (its URL redirects here).
+    sentences = [x.strip() for x in hp[1].split(". ") if x.strip()]
+    lead = sentences[0] + "."
+    facts = key_values([(st[1], st[2].replace("\n", " ")), (st[3], st[4].replace("\n", " ")), (st[5], (st[6] + " " + st[7]).replace("\n", " "))], "nu-key-value--inline")
+    opener = f'''<header class="nu-hero-title" data-mode="dark">
   <div class="nu-hero-title__main">
     {breadcrumb([(UNIT, "")], "Next Up Founders Prize")}
-    <img class="st-campaign-mark" src="{{{{base}}}}assets/img/{asset(h[0]["local"])}" alt="Next Up Founders Prize">
+    <img class="nu-hero-title__mark" src="{mark(h[0]["local"])}" alt="Northeastern University Next Up Founders Prize">
     <h1 class="nu-heading nu-heading--h1">Your first venture. Before your first semester.</h1>
     <p class="nu-text nu-text--lead">{e(lead)}</p>
-    <ul class="nu-meta-list nu-meta-list--inline"><li><span class="nu-tag nu-tag--closed">Applications closed</span></li><li>Finals November 17–20</li></ul>
-    <p class="st-campaign-figure"><span class="nu-text nu-text--meta">Up to</span> <span class="nu-numeral nu-numeral--md">$100K</span> <span class="nu-text">{e(st[0])}</span></p>
+    <ul class="nu-meta-list nu-meta-list--inline"><li><span class="nu-tag nu-tag--closed">2026 applications closed</span></li><li>Finals <time datetime="2026-11-17/2026-11-20">November 17–20</time></li></ul>
   </div>
-  {facts}
+  <div class="nu-hero-title__facts">
+    <div class="nu-stat nu-hero-title__figure"><p class="nu-numeral nu-numeral--xl"><span class="nu-hero-title__qualifier">Up to</span>$100K</p><p class="nu-stat__text">{e(st[0])}</p></div>
+    {facts}
+  </div>
   <hr class="nu-rule nu-hero-title__rule">
 </header>
-<div class="nu-campaign__status" data-mode="dark">
+<div class="nu-campaign__status" data-mode="dark" id="status">
   <div class="nu-notice nu-notice--info" role="status">{i("info").replace('class="nu-icon"', 'class="nu-icon nu-notice__icon"')}<div class="nu-notice__body"><p class="nu-notice__title">Applications for 2026 closed on September 30</p><p class="nu-text nu-text--small">{e(hp[0])}</p><a class="nu-arrow-link nu-arrow-link--sm" href="#h-dates">What happens next {i("arrow")}</a></div></div>
 </div>'''
-    about = f'''<section class="nu-campaign__band" aria-labelledby="h-about"><div class="nu-campaign__index">
-  <div class="nu-campaign__index-head"><h2 class="nu-heading nu-heading--h2" id="h-about">About the prize</h2></div>
-  <div class="nu-prose">{"".join(f"<p>{e(x.strip())}.</p>" for x in hp[1].split(". ")[1:] if x.strip()).replace("..", ".")}</div>
-</div></section>'''
+    rest = "".join(f"<p class=\"nu-text\">{e(x)}{'' if x.endswith('.') else '.'}</p>" for x in sentences[1:])
+    about = f'<section class="nu-campaign__band" aria-labelledby="h-about">{section_header("About the prize", hid="h-about", extra=rest)}</section>'
     net = "".join(f'<div class="nu-stat nu-stat--column"><p class="nu-numeral nu-numeral--md">{e(v)}</p><p class="nu-stat__text">{e(l)}</p></div>' for v, l in zip(st[9::2], st[10::2]))
-    body = opener + about
-    body += band(section_header(st[8], hid="h-net", split=False) + f'<div class="nu-stat-band"><div class="nu-stat-band__stats">{net}</div></div>', "st-band--sunken")
+    body = opener + nu_nav(NU) + about
+    # Four figures need the full width at Numeral md (the --lead form leaves them too little room for 2,600+ and $900M+).
+    body += f'<section class="nu-campaign__band" aria-labelledby="h-net">{section_header(e(st[8]), hid="h-net", split=False)}<div class="nu-stat-band"><div class="nu-stat-band__stats">{net}</div></div></section>'
+    # Who can enter: the short label is the heading, the long sentence the lead, and the rows start level with the heading.
     el = sec("ventures__next-up-2026", 2)
     ep = texts(el, "p")
-    body += band(section_header(clean(texts(el, "h3")[0]), ep[1], hid="h-elig") + key_values([(k[:1].upper() + k[1:], v) for k, v in zip(ep[2::2], ep[3::2])], "nu-key-value--inline st-kv-rows"))
+    rows = key_values([(k[:1].upper() + k[1:], v) for k, v in zip(ep[2::2], ep[3::2])], "nu-key-value--inline")
+    body += f'''<section class="nu-campaign__band" aria-labelledby="h-elig"><div class="nu-campaign__index">
+  <div class="nu-campaign__index-head"><h2 class="nu-heading nu-heading--h2" id="h-elig">{e(ep[0])}</h2><p class="nu-text nu-text--lead">{e(clean(texts(el, "h3")[0]))}</p><p class="nu-text">{e(ep[1])}</p></div>
+  {rows}
+</div></section>'''
+    # How it works, closed: steps 1–4 are behind every entrant; step 5 (semifinals, then the Boston finals) is where the prize is now.
     hw = sec("ventures__next-up-2026", 3)
-    steps = "".join(f'<li class="nu-step nu-step--row"><span class="nu-numeral nu-numeral--md nu-step__numeral" aria-hidden="true">{n + 1}</span><h3 class="nu-heading nu-heading--h4">{e(t)}</h3><p class="nu-text">{e(p)}</p></li>'
-                    for n, (t, p) in enumerate(zip(texts(hw, "h3")[1:], texts(hw, "p")[1:])))
-    body += band(f'''<section class="nu-steps nu-steps--rows" aria-labelledby="h-how">
+    pairs = list(zip(texts(hw, "h3")[1:], texts(hw, "p")[1:]))
+    now = ' aria-current="step"'
+    steps = "".join(f'<li class="nu-step nu-step--row"{now if n == len(pairs) - 1 else ""}><span class="nu-numeral nu-numeral--md nu-step__numeral" aria-hidden="true">{n + 1}</span><h3 class="nu-heading nu-heading--h4">{e(sentence(t))}</h3><p class="nu-text">{e(p)}</p></li>'
+                    for n, (t, p) in enumerate(pairs))
+    body += f'''<section class="nu-campaign__band"><section class="nu-steps nu-steps--rows ge-steps--closed" aria-labelledby="h-how">
   <div class="nu-steps__head"><h2 class="nu-heading nu-heading--h2" id="h-how">How it works</h2><p class="nu-text">{e(texts(hw, "h3")[0])}</p></div>
   <ol class="nu-steps__list">{steps}</ol>
-</section>''')
+</section></section>'''
+    # Important dates as a status Timeline: prose dates under the titles, led by Done, Now or Next (as of late October 2026).
     dt = sec("ventures__next-up-2026", 4)
     dp = texts(dt, "p")
-    tl = "".join(f'<li class="nu-timeline-item"><span class="nu-timeline-item__date">{e(v)}</span><span class="nu-timeline-item__rail" aria-hidden="true"></span><div class="nu-timeline-item__body"><h3 class="nu-heading nu-heading--h4">{e(k)}</h3></div></li>' for k, v in zip(dp[1::2], dp[2::2]))
-    body += band(f'''<section class="nu-timeline nu-timeline--index" aria-labelledby="h-dates">
+    stages = [("Applications closed", '<time datetime="2026-09-30">September 30</time>', "Done")]
+    stages += [(k.replace("Celebration", "celebration"), e(v), s) for (k, v), s in zip(zip(dp[1::2], dp[2::2]), ["Now", "Next", "Next"])]
+    tl = "".join(f'<li class="nu-timeline-item"{now if s == "Now" else ""}><span class="nu-timeline-item__rail" aria-hidden="true"></span><div class="nu-timeline-item__body"><h3 class="nu-heading nu-heading--h4">{e(k)}</h3><p class="nu-timeline-item__date"><span class="nu-timeline__status">{s}</span>{v}</p></div></li>'
+                 for k, v, s in stages)
+    body += f'''<section class="nu-campaign__band"><section class="nu-timeline nu-timeline--index nu-timeline--status" aria-labelledby="h-dates">
   <div class="nu-timeline__head"><h2 class="nu-heading nu-heading--h2" id="h-dates">Important dates</h2><p class="nu-timeline__note">{e(texts(dt, "h3")[0])}</p></div>
   <ol class="nu-timeline__list">{tl}</ol>
-</section>''')
+</section></section>'''
     fq = sec("ventures__next-up-2026", 5)
-    groups, cur, pending = [("General", [])], None, None
+    groups = [("General", [])]
     seq = [c for c in fq if c["kind"] in ("p", "separator")]
     k = 0
     while k < len(seq):
@@ -498,18 +702,18 @@ def next_up():
             groups.append((c["text"], []))
         k += 1
     gh = "".join(f'<div class="nu-accordion__group"><h3 class="nu-heading nu-heading--h4 nu-accordion__group-title">{e(g)}</h3><div class="nu-accordion__items">{accordion(items, "faq" + str(n))}</div></div>' for n, (g, items) in enumerate(groups) if items)
-    rules = next(c for c in fq if c["kind"] == "button")
-    body += band(f'''<section class="nu-accordion" aria-labelledby="h-faq">
+    body += f'''<section class="nu-campaign__band"><section class="nu-accordion" aria-labelledby="h-faq">
   <div class="nu-accordion__head"><h2 class="nu-heading nu-heading--h2" id="h-faq">FAQ</h2></div>
   <div class="nu-accordion__groups">{gh}</div>
-</section><div class="st-actions">{arrow(rules["text"], rules["href"])}{arrow("Application guide", NU + "application-guide/")}</div>''')
+</section></section>'''
     site.page("ventures/next-up-2026", "Next Up Founders Prize 2026", hp[1][:155], f'<div class="nu-campaign">{body}</div>', NU)
 
 
 def sentence(t):
     """Title Case headings to sentence case, keeping acronyms."""
+    keep = {"Boston", "Northeastern", "Global", "Entrepreneurship", "Week"}  # proper nouns stay capitalised
     words = t.split()
-    return " ".join(w if (n == 0 or (w.isupper() and len(w) > 1)) else w.lower() for n, w in enumerate(words))
+    return " ".join(w if (n == 0 or (w.isupper() and len(w) > 1) or w.strip(",.") in keep) else w.lower() for n, w in enumerate(words))
 
 
 def rules():
@@ -520,14 +724,14 @@ def rules():
         m = re.match(r"^(\d+)\.?\s+(.*)$", p)
         if m and len(p) < 70:
             aid = f"clause-{m.group(1)}"
-            toc.append((aid, m.group(1) + ".", m.group(2)))
-            prose += f'<h2 id="{aid}"><span class="st-clause-num">{m.group(1)}.</span> {e(m.group(2))}</h2>'
+            toc.append((aid, m.group(1) + ".", sentence(m.group(2))))
+            prose += f'<h2 id="{aid}"><span class="ge-clause-num">{m.group(1)}.</span>{e(sentence(m.group(2)))}</h2>'
         elif re.match(r"^[a-z]\.\s", p) or re.match(r"^i\.", p):
             prose += f'<p class="st-clause">{e(p).replace(chr(10), "<br>")}</p>'
         else:
             prose += f"<p>{e(p).replace(chr(10), '<br>')}</p>"
     tp = texts(top, "p")
-    body = hero_title("Official rules", tp[1], [(UNIT, ""), ("Next Up Founders Prize", NU)]) + document(prose, toc)
+    body = hero_title("Official rules", tp[1], [(UNIT, ""), ("Next Up Founders Prize", NU)]) + nu_nav(NU + "program-parameters-rules/") + document(prose, toc)
     site.page("ventures/next-up-2026/program-parameters-rules", "Official rules · Next Up Founders Prize", tp[1], body, NU)
 
 
@@ -556,54 +760,96 @@ def guide():
                     prose += f"<p>{e(para.strip())}</p>"
     if in_list:
         prose += "</ul>"
-    body = hero_title("Application guide", "Next Up Founders Prize", [(UNIT, ""), ("Next Up Founders Prize", NU)]) + document(prose, toc)
+    body = hero_title("Application guide", "Next Up Founders Prize", [(UNIT, ""), ("Next Up Founders Prize", NU)]) + nu_nav(NU + "application-guide/") + document(prose, toc)
     site.page("ventures/next-up-2026/application-guide", "Application guide · Next Up Founders Prize", "How to apply to the Next Up Founders Prize.", body, NU)
 
 
 def submission():
-    frame = next((x for x in C["embeds"]["iframes"] if "qualtrics" in json.dumps(x).lower()), {})
-    src = frame.get("src") if isinstance(frame, dict) else None
-    body = hero_title("Submission", "Next Up Founders Prize 2026", [(UNIT, ""), ("Next Up Founders Prize", NU)]) + band(f'''<div class="nu-notice nu-notice--info">{i("info").replace('class="nu-icon"', 'class="nu-icon nu-notice__icon"')}
-  <div class="nu-notice__body"><p class="nu-notice__title">Applications for 2026 closed on September 30</p>
-  <p class="nu-text nu-text--small">The live site still embeds the submission form. Finalists will be notified in November.</p>
-  <a class="nu-arrow-link nu-arrow-link--sm" href="{href(NU)}#h-dates">Important dates {i("arrow")}</a></div></div>
-  {f'<div class="st-actions">{arrow("Open the submission form", src)}</div>' if src else ""}''')
-    site.page("ventures/next-up-2026/submission", "Submission · Next Up Founders Prize", "Next Up Founders Prize submission.", body, NU)
+    """Folded into the Overview's status Notice (ge-08): applications are closed, so the old URL redirects there."""
+    out = site.out / "ventures/next-up-2026/submission/index.html"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text('''<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">
+<title>Next Up Founders Prize · Entrepreneurship · Northeastern University</title>
+<link rel="canonical" href="../"><meta http-equiv="refresh" content="0; url=../#status"></head>
+<body><p>Applications for the 2026 Next Up Founders Prize are closed. <a href="../#status">Go to the Next Up Founders Prize</a>.</p></body></html>
+''')
 
 
-# ---------- events archive ----------
-def events():
-    h = sec("events", 0)
-    evs = [x for x in R["events"] if x["slug"] != "sample-event-2"]
-    evs.sort(key=lambda x: (x.get("event_year") or 0, datetime.strptime(x["date_as_shown"] + " 2000", "%b %d %Y")), reverse=True)
-    cards = ""
-    for x in evs:
-        d = datetime.strptime(f'{x["date_as_shown"]} {x["event_year"]}', "%b %d %Y")
-        loc = x.get("location_as_shown") or ""
-        loc = "" if loc.startswith("http") else loc
-        link = x.get("registration_or_info_link")
-        title = f'<a class="nu-event-card__link" href="{e(link)}">{e(clean(x["title"]))}</a>' if link and not link.startswith(LIVE) else e(clean(x["title"]))
-        tags = "".join(f'<span class="nu-tag">{e(t)}</span>' for t in (x.get("locations_taxonomy") or []) + (x.get("types") or []))
-        cards += f'''<li><article class="nu-event-card">
-  <time class="nu-date-block" datetime="{d:%Y-%m-%d}"><span class="nu-date-block__month">{d:%b}</span><span class="nu-date-block__day">{d.day}</span></time>
+# ---------- events: Global Entrepreneurship Week, then what's coming up (the 2023 archive is dropped) ----------
+def series_event(time, title, url, part_of, tba=False):
+    ext = url.startswith("http")
+    return (f'<li class="nu-event-series__event{" nu-event-series__event--tba" if tba else ""}"><p class="nu-event-series__time">{e(time)}</p>'
+            f'<h4 class="nu-heading nu-heading--h4"><a class="nu-event-series__link" href="{href(url)}">{e(title)}</a>{i("external" if ext else "arrow")}</h4>'
+            f'<p class="nu-text nu-text--meta">{e(part_of)}</p></li>')
+
+
+def series_day(iso, month, day, weekday, events_html, all_week=False):
+    pre = '<span class="u-vh">All week, </span>' if all_week else ""
+    return (f'<li class="nu-event-series__day"><h3 class="nu-heading nu-heading--h4">{pre}<time class="nu-date-block" datetime="{iso}">'
+            f'<span class="nu-date-block__month">{month}</span><span class="nu-date-block__day">{day}</span><span class="nu-date-block__weekday">{weekday}</span></time></h3>'
+            f'<ul class="nu-event-series__events">{events_html}</ul></li>')
+
+
+def event_card(iso, month, day, label, title, url, meta, tags):
+    lis = "".join(f'<li>{i(ic)}<span>{e(t)}</span></li>' for ic, t in meta)
+    return f'''<li><article class="nu-event-card">
+  <time class="nu-date-block" datetime="{iso}" aria-label="{e(label)}"><span class="nu-date-block__month">{month}</span><span class="nu-date-block__day">{day}</span></time>
   <div class="nu-event-card__body">
-    <h3 class="nu-heading nu-heading--h4">{title}</h3>
-    <ul class="nu-meta-list">
-      <li>{i("calendar")}<span>{d:%B} {d.day}, {d.year}</span></li>
-      {f'<li>{i("clock")}<span>{e(x["time_as_shown"])}</span></li>' if x.get("time_as_shown") else ""}
-      {f'<li>{i("location")}<span>{e(loc)}</span></li>' if loc else ""}
-    </ul>
-    <div class="nu-event-card__tags">{tags}</div>
+    <h3 class="nu-heading nu-heading--h4"><a class="nu-event-card__link" href="{href(url)}">{e(title)}</a></h3>
+    <ul class="nu-meta-list">{lis}</ul>
+    <div class="nu-event-card__tags">{"".join(f'<span class="nu-tag">{e(t)}</span>' for t in tags)}</div>
   </div>
 </article></li>'''
-    upcoming = "".join(link_row(t, u, d, c) for t, u, d, c in [
-        ("300 Mass Ave. Launch Week", "300-mass-ave-open-house/", "The open house for Northeastern’s flagship entrepreneurship hub, November 18–19, 2026.", "See the agenda"),
-        ("Next Up Founders Prize finals", NU, "High school founders pitch during Global Entrepreneurship Week, November 17–20.", "About the prize"),
-        ("Events on Luma", "https://luma.com/eship", "The entrepreneurship calendar across Northeastern’s global network.", "Open the calendar")])
+
+
+def events():
+    h = sec("events", 0)
+    lw = "300 Mass Ave. Launch Week"
+    hack = LAUNCH + "#h-hack"
+    # Every event here is on the live Launch Week agenda, the hackathon timeline or the Next Up dates.
+    days = series_day("2026-11-17/2026-11-20", "Nov", "17–20", "All week",
+                      series_event("Day to be announced", "Next Up Founders Prize finals", NU + "#h-dates", "High school founders pitch in Boston or by video", tba=True), True)
+    days += series_day("2026-11-18", "Nov", "18", "Wednesday", "".join(series_event(*x) for x in [
+        ("All day", "Interactive showcase of global entrepreneurship", LAUNCH + "#agenda", lw),
+        ("10 a.m.", "From lab to launch: commercialization broken down", LAUNCH + "#agenda", lw),
+        ("3:30 p.m.", "Leaders @300 with Brian Halligan", LAUNCH + "#leaders-300", lw),
+        ("All day", "Hackathon Demo Day 2.0", hack, "Co-hosted with SCION")]))
+    days += series_day("2026-11-19", "Nov", "19", "Thursday", "".join(series_event(*x) for x in [
+        ("9–11 a.m.", "300 Connect: Live", LAUNCH + "#h-connect", lw),
+        ("3 p.m.", "How to raise venture capital", LAUNCH + "#agenda", lw),
+        ("4:30 p.m.", "Hackathon finals", hack, "Co-hosted with SCION")]))
+    gew = f'''<section class="nu-event-series" aria-labelledby="h-gew">
+  <header class="nu-event-series__head">
+    <h2 class="nu-heading nu-heading--h2" id="h-gew">Global Entrepreneurship Week</h2>
+    <div class="nu-event-series__intro">
+      <p class="nu-event-series__dates"><time datetime="2026-11-17/2026-11-20">November 17–20, 2026</time></p>
+      <p class="nu-text nu-text--lead">Launch Week at 300 Mass Ave., the hackathon finals and the Next Up Founders Prize finals, in one week in Boston.</p>
+      <a class="nu-arrow-link nu-arrow-link--external" href="https://luma.com/eship">Events on Luma<span class="u-vh">, on another site</span>{i("external")}</a>
+    </div>
+  </header>
+  <ol class="nu-event-series__days">{days}</ol>
+</section>'''
+    cards = "".join(event_card(*x) for x in [
+        ("2026-11-12", "Nov", "12", "November 12 to 19, 2026", "300 Hackathon", hack,
+         [("calendar", "November 12–19, 2026"), ("clock", "Applications close Sunday, November 1, at 11:59 p.m."), ("location", "300 Massachusetts Ave., Boston")], ["Students"]),
+        ("2026-11-17", "Nov", "17", "November 17 to 20, 2026", "Next Up Founders Prize finals", NU,
+         [("calendar", "Between November 17 and 20, 2026"), ("location", "Boston campus, or by video")], ["High school founders"]),
+        ("2026-11-18", "Nov", "18", "November 18 to 19, 2026", "300 Mass Ave. Launch Week open house", LAUNCH,
+         [("calendar", "November 18–19, 2026"), ("clock", "9 a.m.–6 p.m."), ("location", "300 Massachusetts Ave., Boston")], ["Open to all"])])
+    upcoming = f'''<section class="nu-event-list" aria-labelledby="h-up">
+  <div class="nu-event-list__head"><h2 class="nu-heading nu-heading--h2" id="h-up">Coming up</h2></div>
+  <div class="nu-event-list__months">
+    <section class="nu-event-list__month" aria-labelledby="m-2026-11">
+      <div class="nu-event-list__month-head"><h3 class="nu-heading nu-heading--h3" id="m-2026-11">November</h3><p class="nu-event-list__count">3 events</p></div>
+      <ul class="nu-event-list__events" role="list">{cards}</ul>
+    </section>
+  </div>
+</section>
+<div class="st-actions">{arrow("The full calendar on Luma", "https://luma.com/eship")}</div>'''
     hero = hero_page(clean(texts(h, "h1")[0]), asset(h[0]["local"]), None, [(UNIT, "")])
-    body = band(section_header("Coming up", hid="h-up", split=False) + f'<div class="st-rows">{upcoming}</div>')
-    body += band(section_header("Past events", "Events from 2023, kept for reference.", hid="h-past") + f'<ul class="st-events" role="list">{cards}</ul>', "st-band--sunken")
-    site.page("events", "Events", "Entrepreneurship events across Northeastern’s global network.", body, "events/", hero)
+    body = band(gew) + band(upcoming)
+    site.page("events", "Events", "Global Entrepreneurship Week and entrepreneurship events across Northeastern’s global network.", body, "events/", hero)
 
 
 def contact():

@@ -736,6 +736,27 @@ li:not(:last-child) > .nu-file-link{border-bottom:0}
   .nu-link-row__body{grid-column:5 / -1}
 }
 
+/* Media: a result row with a small square thumbnail at the row's end and at most one meta line, the Finder's default result form.
+   Phones: the thumbnail sits beside the title; the body runs full width under both. From 720px the title keeps columns 1–4, the body
+   columns 5–10, and the thumbnail (up to 128px) closes the row on the right edge of column 12. */
+.nu-link-row--media{grid-template-columns:minmax(0,1fr) var(--space-8);align-items:start}
+.nu-link-row--media .nu-link-row__title{grid-column:1;grid-row:1}
+.nu-link-row--media .nu-link-row__media{grid-column:2;grid-row:1 / span 2;display:block;overflow:hidden;background:var(--surface-sunken)}
+.nu-link-row--media .nu-link-row__body{grid-column:1 / -1;grid-row:2}
+.nu-link-row--media .nu-link-row__media .nu-image{transition:scale var(--dur-slow) var(--ease-out)}
+.nu-link-row--media:hover .nu-link-row__media .nu-image{scale:1.03}
+.nu-link-row__meta{margin:0}
+@media not all and (min-width:720px){
+  /* Beside a two-line title the thumbnail needs only the title's rows; the body clears it. */
+  .nu-link-row--media .nu-link-row__media{grid-row:1}
+}
+@media (min-width:720px){
+  .nu-link-row--media{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .nu-link-row--media .nu-link-row__title{grid-column:1 / span 4}
+  .nu-link-row--media .nu-link-row__body{grid-column:5 / span 6;grid-row:1}
+  .nu-link-row--media .nu-link-row__media{grid-column:11 / -1;grid-row:1;justify-self:end;width:min(100%,var(--space-10))}
+}
+
 /* ---- components/molecules/list-toolbar.css ---- */
 /* ListToolbar: the line between a Finder's filters and its results. The result count on the left (a live region), sort and view controls on the right, a hairline under it all.
    Wraps to two lines on phones; the count always comes first. */
@@ -902,6 +923,21 @@ a.nu-pagination__page:hover{background:var(--line);color:var(--on-surface)}
   .nu-person-card__end{grid-column:auto;justify-content:flex-end}
 }
 
+/* Compact: dense rosters (a 54-person team by office). A square thumbnail, the name at body size and the role in small type; six across in
+   a wide CardGrid. Where its container (the CardGrid) is under 720px wide it becomes a list row: a 40px thumbnail beside name and role. */
+.nu-person-card--compact{gap:var(--space-3)}
+.nu-person-card--compact .nu-person-card__placeholder{aspect-ratio:1;font-size:var(--fs-h4)}
+.nu-person-card--compact .nu-person-card__body{gap:0}
+.nu-person-card--compact .nu-person-card__body .nu-heading{margin-bottom:var(--space-1);text-wrap:balance}
+.nu-person-card--compact .nu-person-card__title{text-wrap:pretty}
+@container (max-width:719px){
+  .nu-person-card--compact{grid-template-columns:calc(var(--space-6) + var(--space-4)) minmax(0,1fr);align-items:center;gap:var(--space-4);
+    padding-block:var(--space-3);border-top:var(--border-hair) solid var(--line)}
+  .nu-person-card--compact .nu-person-card__placeholder{font-size:var(--fs-body)}
+  .nu-person-card--compact .nu-person-card__body .nu-heading{margin-bottom:0}
+  .nu-person-card--compact:has(:focus-visible){outline-offset:0}
+}
+
 /* ---- components/molecules/poster-card.css ---- */
 /* PosterCard: 22a's 2:3 story poster. The frame is always Night (data-mode="dark" on __frame), so the title reads canvas-on-scrim on either ground.
    Selected (aria-pressed / aria-current) lifts the poster 8px inside a ground-coloured gap and a 2px ring, and shows the timer ProgressLine, as 22a's lineup does. */
@@ -930,6 +966,49 @@ a.nu-pagination__page:hover{background:var(--line);color:var(--on-surface)}
 /* Narrow posters (lineups, phone strips): the title steps down so long labels neither hyphenate nor clip. */
 .nu-poster-card__frame{container-type:inline-size}
 @container (max-width: 140px){.nu-poster-card__title{font-size:var(--fs-small);inset:auto var(--space-3) var(--space-3)}}
+
+/* ---- components/molecules/proof-point.css ---- */
+/* ProofPoint: one piece of outside evidence for a claim: who said it (the outlet, the awarding body or the ranking, set large as type
+   or as a one-colour mark), what they said (the real headline or the award's name) and when, with the external cue when it links out.
+   The whole item is one link when it has a URL; without one it is static and carries no cue.
+   ProofPointRow sets 2–6 of them on one ruled line: each item brings its own hairline, so the row reads as one rule broken at the gutters.
+   From 960px the items take four columns each on the 12-column grid (edges on columns 1, 5 and 9); the split row hangs a heading in
+   columns 1–4 on a strong rule that continues the items' hairlines, and the items start on column 5, the reading edge. */
+.nu-proof-point{position:relative;display:grid;grid-template-rows:auto auto 1fr;gap:var(--space-3);align-content:start;min-width:0;
+  padding-top:var(--space-4);color:var(--on-surface);text-decoration:none;border-top:var(--border-hair) solid var(--line)}
+.nu-proof-point__source{display:block}
+/* A cleared one-colour mark in place of the name: sized by height so marks of different shapes sit on one line. */
+.nu-proof-point__mark{display:block;width:auto;max-width:100%;height:var(--space-7);object-fit:contain;object-position:left center;filter:var(--mark-filter)}
+.nu-proof-point__claim{display:block;max-width:36ch;color:var(--on-surface-2);text-wrap:pretty;
+  text-decoration:underline;text-decoration-thickness:var(--border-hair);text-underline-offset:.2em;text-decoration-color:transparent;
+  transition:color var(--dur-fast) var(--ease-out),text-decoration-color var(--dur-fast) var(--ease-out)}
+/* The meta line sits on the item's floor, so years line up across a row whatever the claims' lengths. */
+.nu-proof-point__meta{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);align-self:end;padding-top:var(--space-2);
+  font-variant-numeric:tabular-nums lining-nums}
+.nu-proof-point__meta .nu-icon{flex:none;color:var(--on-surface-2);transition:translate var(--dur-base) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+a.nu-proof-point:hover .nu-proof-point__claim{color:var(--link-hover);text-decoration-color:currentColor}
+a.nu-proof-point:hover .nu-proof-point__meta .nu-icon{color:var(--on-surface);translate:calc(var(--space-1) * .5) calc(var(--space-1) * -.5)}
+a.nu-proof-point:focus-visible{outline-offset:var(--space-2)}
+
+/* ProofPointRow. */
+.nu-proof-point-row{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-6);min-width:0}
+.nu-proof-point-row__head{display:grid;gap:var(--space-4);justify-items:start;align-content:start;min-width:0}
+.nu-proof-point-row__head .nu-arrow-link{margin-top:calc(var(--space-2) * -1)}
+.nu-proof-point-row__list{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-6) var(--layout-gutter);min-width:0;margin:0;padding:0;list-style:none}
+.nu-proof-point-row__list > li{display:grid;min-width:0}
+@media (min-width:720px){
+  .nu-proof-point-row__list{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:960px){
+  .nu-proof-point-row{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);row-gap:var(--space-6)}
+  .nu-proof-point-row > *{grid-column:1 / -1}
+  .nu-proof-point-row__list{grid-template-columns:subgrid;row-gap:var(--space-7)}
+  .nu-proof-point-row__list > li{grid-column:span 4}
+  /* Split: the heading on a strong rule in columns 1–4, level with the items' hairlines; two items a line from column 5. */
+  .nu-proof-point-row--split{align-items:start}
+  .nu-proof-point-row--split > .nu-proof-point-row__head{grid-column:1 / span 4;padding-top:var(--space-4);border-top:var(--border-rule) solid var(--on-surface)}
+  .nu-proof-point-row--split > .nu-proof-point-row__list{grid-column:5 / -1}
+}
 
 /* ---- components/molecules/quote.css ---- */
 /* Quote: a person's words set as display type (22a voices: Light, large, balanced), the speaker beneath. Pull for prose, testimonial with a square portrait. */
@@ -1018,6 +1097,24 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
 .nu-stat--row .nu-stat__source{grid-column:2}
 .nu-stat--column:first-child{padding-inline-start:0;border-inline-start:0}
 
+/* ---- components/molecules/statement.css ---- */
+/* Statement: the page's opening pull-line (22a's intro lines under the billboard). One or two lines of Light type at h1 size across
+   ten columns, then, when the thought needs it, the rest as a lead and one ArrowLink from column 5, the system's reading edge.
+   The limit is the design: two lines at 1440px is about 90 characters. Anything longer is a lead, not a statement. Content-only:
+   it sits inside a band, which gives it the layout edge and the ground (Canvas, or Night when it is the band under a Night hero). */
+.nu-statement{display:grid;grid-template-columns:minmax(0,1fr);row-gap:var(--space-6);min-width:0;margin:0}
+.nu-statement__line{max-width:24ch;font-size:var(--fs-h1);font-weight:var(--fw-display);text-wrap:balance}
+.nu-statement__body{display:grid;justify-items:start;gap:var(--space-4);min-width:0}
+.nu-statement__body .nu-text--lead{max-width:52ch}
+.nu-statement__body .nu-arrow-link{margin-top:calc(var(--space-2) * -1)}
+/* A link straight under the line (no lead) keeps the heading-to-action gap, not the paragraph one. */
+.nu-statement__line+.nu-arrow-link{justify-self:start;margin-top:calc(var(--space-2) * -1)}
+@media (min-width:960px){
+  .nu-statement{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}
+  .nu-statement__line{grid-column:1 / span 10;max-width:none}
+  .nu-statement__body,.nu-statement>.nu-arrow-link{grid-column:5 / -1}
+}
+
 /* ---- components/molecules/step.css ---- */
 /* Step: one stage of a process (How to apply). A Light numeral, a heading and a sentence, under a hairline that becomes the red ProgressLine weight on the current step.
    Steps are list items: the numeral repeats the <ol>'s count for the eye and is hidden from screen readers. */
@@ -1093,6 +1190,29 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-timeline-item{grid-template-columns:var(--space-10) var(--space-5) minmax(0,1fr);grid-template-areas:"date rail body"}
   .nu-timeline-item__date{padding-top:calc((var(--fs-h4) - var(--fs-small)) * var(--lh-title) / 2);padding-bottom:0}
 }
+
+/* Featured: the headline session of an agenda. The title a step up (h3), a larger marker that is ink with a ground-coloured gap and an outer
+   ring (a target, not red: red stays with the item that is now), more air below, and room for a speaker row. No fill, no side bar. */
+.nu-timeline-item--featured{--nu-tl-dot:var(--space-4);--nu-tl-top:calc(var(--fs-h3) * var(--lh-title) / 2 - var(--nu-tl-dot) / 2)}
+.nu-timeline-item--featured .nu-timeline-item__rail::after{background:var(--on-surface);border-color:var(--on-surface);
+  box-shadow:0 0 0 var(--border-control) var(--surface),0 0 0 calc(var(--border-control) + var(--border-hair)) var(--on-surface)}
+.nu-timeline-item--featured .nu-timeline-item__body{gap:var(--space-3);padding-bottom:var(--space-7)}
+.nu-timeline-item--featured .nu-timeline-item__body > .nu-heading{font-size:var(--fs-h3);font-weight:var(--fw-title);letter-spacing:var(--tracking-title);max-width:40ch}
+.nu-timeline-item--featured .nu-timeline-item__body > .nu-text{font-size:var(--fs-lead)}
+.nu-timeline-item--featured .nu-timeline-item__date{color:var(--on-surface)}
+.nu-timeline-item--featured .nu-timeline-item__body > .nu-tag{justify-self:start}
+@media (min-width:720px){.nu-timeline-item--featured .nu-timeline-item__date{padding-top:calc((var(--fs-h3) - var(--fs-small)) * var(--lh-title) / 2)}}
+
+/* Speakers: compact name-and-role rows, two up where the body is wide; an optional small square portrait leads each. */
+.nu-timeline-item__speakers{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(var(--space-10) * 2)),1fr));gap:var(--space-3) var(--space-6);
+  margin:var(--space-1) 0 0;padding:0;list-style:none}
+.nu-timeline-item__speaker{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:0 var(--space-3);min-width:0;padding-top:var(--space-3);border-top:var(--border-hair) solid var(--line);
+  font-size:var(--fs-small);line-height:var(--lh-title)}
+.nu-timeline-item__speaker:has(> .nu-image){grid-template-columns:var(--space-8) minmax(0,1fr);align-items:center}
+.nu-timeline-item__speaker > .nu-image{grid-row:span 2}
+.nu-timeline-item__speaker-name{font-weight:var(--fw-medium);color:var(--on-surface)}
+.nu-timeline-item__speaker-role{color:var(--on-surface-2)}
+.nu-timeline-item--featured .nu-timeline-item__speaker{font-size:var(--fs-body)}
 
 /* ---- components/molecules/toggletip.css ---- */
 /* Toggletip: an info IconButton that reveals a short explanation in a small floating panel (radius-md, shadow-md: it floats over content).
@@ -1271,6 +1391,30 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-campus-map__panel{position:absolute;top:50%;left:49%;translate:0 -50%;width:30%;margin:0;grid-template-columns:minmax(0,1fr);gap:var(--space-4);box-shadow:var(--shadow-lg)}
 }
 
+/* Index: the map paired with a list of every campus, grouped by region, so the network can be scanned and every campus reached without the map.
+   Each region is a heading on a strong rule in columns 1–4 with its count; its campuses are LinkRows from column 5. From 960px the rows are
+   subgrids of the region's eight columns, so a campus name holds columns 5–8 and its place and sentence start on column 9: three edges, one
+   column-step apart, all on the page grid. Rows are compact here (h4 names, tighter padding): this is an index, not a feature. */
+.nu-campus-map__index{display:grid;gap:var(--space-7);min-width:0;padding-inline:var(--layout-edge)}
+.nu-campus-map__region{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4) var(--layout-gutter);min-width:0}
+.nu-campus-map__region-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-4);padding-top:var(--space-4);border-top:var(--border-rule) solid var(--on-surface)}
+.nu-campus-map__count{margin:0;font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-muted);font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
+.nu-campus-map__campuses{display:grid;min-width:0}
+.nu-campus-map__campuses .nu-link-row{padding-block:var(--space-4)}
+.nu-campus-map__campuses .nu-link-row__body{gap:var(--space-2)}
+.nu-campus-map__campuses .nu-link-row__body > .nu-text--meta{color:var(--on-surface-2)}
+.nu-campus-map__campuses .nu-link-row__title{display:flex;align-items:baseline;gap:var(--space-2)}
+.nu-campus-map__external{color:var(--on-surface-muted);transition:translate var(--dur-base) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+.nu-campus-map__campuses .nu-link-row:hover .nu-campus-map__external{color:var(--on-surface);translate:calc(var(--space-1) * .5) calc(var(--space-1) * -.5)}
+@media (min-width:960px){
+  .nu-campus-map__region{grid-template-columns:repeat(12,minmax(0,1fr));align-items:start}
+  .nu-campus-map__region-head{grid-column:1 / span 4;display:grid;justify-content:start;gap:var(--space-1)}
+  .nu-campus-map__campuses{grid-column:5 / -1;grid-template-columns:subgrid}
+  .nu-campus-map__campuses .nu-link-row{grid-column:1 / -1;grid-template-columns:subgrid;column-gap:var(--layout-gutter)}
+  /* The first row's hairline would sit under the region's strong rule: the rule is the region's top edge, so the row drops its own. */
+  .nu-campus-map__campuses .nu-link-row:first-child{border-top-color:transparent}
+}
+
 /* ---- components/organisms/card-grid.css ---- */
 /* CardGrid: a section of same-kind cards (StoryCard, PersonCard, EventCard, ProgramCard) under a heading, with an optional ArrowLink to the full list and a Load more Button.
    Columns follow the grid's own width (a size container): 1, then 2 from 720px, then 3 (or 4 with --cols-4) from 960px. Loading reserves the slots with Skeletons; an EmptyState replaces the list when there is nothing. */
@@ -1307,6 +1451,42 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-card-grid__items{grid-template-columns:repeat(3,minmax(0,1fr))}
   .nu-card-grid--cols-4 .nu-card-grid__items{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
+
+/* Compact people: three, then six across; under 720px a single ruled list of PersonCard rows (the card turns itself into a row). */
+.nu-card-grid__items:has(> li > .nu-person-card--compact){row-gap:var(--space-6);column-gap:var(--space-4)}
+@container (max-width:719px){
+  .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:minmax(0,1fr);gap:0;border-bottom:var(--border-hair) solid var(--line)}
+}
+@container (min-width:720px){.nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(4,minmax(0,1fr))}}
+@container (min-width:960px){.nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+/* Grouped: one grid per group (staff by office), each group on a strong rule. From 960px the group's heading hangs in columns 1–4 and
+   sticks while its people scroll past; the people start on column 5, the reading edge. */
+.nu-card-grid--grouped{gap:var(--space-8)}
+.nu-card-grid__group{display:grid;gap:var(--space-5);padding-top:var(--space-4);border-top:var(--border-hair) solid var(--line-strong)}
+.nu-card-grid__group-head{display:grid;gap:var(--space-1);align-content:start}
+.nu-card-grid__group-head>.nu-text{color:var(--on-surface-2)}
+/* Beside the cards the heading's cap height, not its line box, meets the first row of portraits. */
+.nu-card-grid__group-head>.nu-heading{text-box:trim-start cap alphabetic}
+@container (min-width:960px){
+  .nu-card-grid__group{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);padding-top:var(--space-5)}
+  .nu-card-grid__group-head{grid-column:1 / span 4;position:sticky;top:calc(var(--layout-header) + var(--space-5))}
+  .nu-card-grid__group>.nu-card-grid__items{grid-column:5 / -1}
+  .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@container (min-width:1200px){
+  .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+
+/* Pair: exactly two stories as a feature, two PosterCard links side by side (4:3 frames, the title at h3 on the scrim) with the
+   destination under each frame. Never pad a pair out to three. */
+@container (min-width:720px){.nu-card-grid--pair .nu-card-grid__items{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-5)}}
+.nu-card-grid--pair .nu-poster-card__frame{aspect-ratio:1}
+@container (min-width:720px){.nu-card-grid--pair .nu-poster-card__frame{aspect-ratio:4/3}}
+.nu-card-grid--pair .nu-poster-card__title{inset:auto var(--space-5) var(--space-5);font-size:var(--fs-h3);font-weight:var(--fw-title);line-height:var(--lh-title);letter-spacing:var(--tracking-title);max-width:28ch}
+.nu-card-grid--pair .nu-poster-card__caption{justify-self:start;color:var(--on-surface)}
+.nu-card-grid--pair .nu-poster-card:hover .nu-poster-card__caption{color:var(--link-hover)}
+.nu-card-grid--pair .nu-poster-card:hover .nu-poster-card__caption .nu-icon{translate:calc(var(--space-1) * .5) calc(var(--space-1) * -.5)}
 
 /* ---- components/organisms/closer.css ---- */
 /* Closer: 22a's .admit. The page's last word: a full-bleed photograph (or a slow crossfade of several) dimmed and sinking into black,
@@ -1521,6 +1701,61 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-dialog--drawer:modal{inset:0;width:100%;height:100dvh;max-height:none;border-radius:var(--radius-none);border:0}
 }
 
+/* ---- components/organisms/directory-grid.css ---- */
+/* DirectoryGrid: a dense, logo-led directory of organisations (a 142-venture portfolio, partners). Each entry is one link: a LogoTile, the name,
+   one meta line (industry) and, where there is room, one line of what it does. A ListToolbar above carries the count and a Grid / List toggle
+   (ChipGroup, aria-pressed). Grid: 2, 3, 4 then 5 across by the directory's own width. List (`--list`): hairline rows with a small tile and
+   the name in columns 1–4 and the description from column 5. Marks are one-colour at rest and take their colour back on hover. */
+.nu-directory-grid{container:directory-grid / inline-size;display:grid;gap:var(--space-5);min-width:0}
+.nu-directory-grid__head{display:grid;gap:var(--space-3);max-width:var(--layout-prose)}
+.nu-directory-grid__head>.nu-text{color:var(--on-surface-2)}
+.nu-directory-grid__items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6) var(--space-4);margin:0;padding:0;list-style:none}
+.nu-directory-grid__items>li{display:grid;min-width:0}
+.nu-directory-grid__item{position:relative;display:grid;gap:var(--space-3);align-content:start;min-width:0}
+/* The tile is LogoTile, used here as the entry's media: its own cell, not part of a shared wall. */
+.nu-directory-grid__item>.nu-logo-tile{margin:0;aspect-ratio:3/2;min-height:0}
+/* Many venture marks arrive on their own white or grey squares. Multiplying on Canvas (screening on Night, after LogoTile's inversion)
+   drops that square into the tile, so no mark looks boxed twice. */
+.nu-directory-grid__item>.nu-logo-tile img.nu-logo-tile__mark{mix-blend-mode:multiply}
+[data-mode="dark"] .nu-directory-grid__item>.nu-logo-tile img.nu-logo-tile__mark{mix-blend-mode:screen}
+.nu-directory-grid__body{display:grid;gap:var(--space-1);align-content:start;min-width:0}
+.nu-directory-grid__body .nu-heading{text-wrap:balance}
+.nu-directory-grid__desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:var(--space-1);color:var(--on-surface-2)}
+.nu-directory-grid__link{color:inherit;text-decoration:underline;text-decoration-thickness:var(--border-hair);text-underline-offset:.16em;text-decoration-color:transparent;
+  transition:text-decoration-color var(--dur-fast) var(--ease-out)}
+.nu-directory-grid__link::after{content:"";position:absolute;inset:0;z-index:1}
+.nu-directory-grid__link:focus-visible{outline:0}
+.nu-directory-grid__item:has(.nu-directory-grid__link:focus-visible){outline:var(--border-focus) solid var(--focus);outline-offset:var(--space-2)}
+.nu-directory-grid__item:hover .nu-directory-grid__link{text-decoration-color:currentColor}
+.nu-directory-grid__item:hover .nu-logo-tile{color:var(--on-surface);background:var(--surface-raised)}
+.nu-directory-grid__item:hover img.nu-logo-tile__mark{filter:none;opacity:1}
+/* In colour on Night a mark keeps its own ground; it needs no blend. */
+[data-mode="dark"] .nu-directory-grid__item:hover img.nu-logo-tile__mark{mix-blend-mode:normal}
+.nu-directory-grid__item .nu-logo-tile__name{font-size:var(--fs-body)}
+/* Venture files carry wide margins of their own; the mark may fill more of a directory tile than of a wall cell. */
+.nu-directory-grid__item>.nu-logo-tile .nu-logo-tile__mark{max-width:75%;max-height:60%}
+.nu-directory-grid__foot{display:flex;justify-content:center;padding-top:var(--space-3)}
+
+@container directory-grid (min-width:720px){.nu-directory-grid__items{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--space-5)}}
+@container directory-grid (min-width:960px){.nu-directory-grid__items{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@container directory-grid (min-width:1200px){.nu-directory-grid__items{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+/* List: one ruled column. Phones: a 64px tile beside name and industry, the description under both. */
+.nu-directory-grid--list .nu-directory-grid__items{grid-template-columns:minmax(0,1fr);gap:0;border-bottom:var(--border-hair) solid var(--line)}
+.nu-directory-grid--list .nu-directory-grid__item{grid-template-columns:var(--space-8) minmax(0,1fr);align-items:center;column-gap:var(--space-4);
+  padding-block:var(--space-4);border-top:var(--border-hair) solid var(--line)}
+.nu-directory-grid--list .nu-directory-grid__item>.nu-logo-tile{aspect-ratio:1;padding:var(--space-1)}
+.nu-directory-grid--list .nu-logo-tile__name{font-size:var(--fs-label)}
+.nu-directory-grid--list .nu-directory-grid__desc{grid-column:1 / -1;-webkit-line-clamp:3;margin-top:0}
+.nu-directory-grid--list .nu-directory-grid__item:has(:focus-visible){outline-offset:0}
+@container directory-grid (min-width:720px){
+  .nu-directory-grid--list .nu-directory-grid__items{grid-template-columns:minmax(0,1fr)}
+  .nu-directory-grid--list .nu-directory-grid__item{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);align-items:start}
+  .nu-directory-grid--list .nu-directory-grid__item>.nu-logo-tile{grid-column:1}
+  .nu-directory-grid--list .nu-directory-grid__body{grid-column:2 / span 3}
+  .nu-directory-grid--list .nu-directory-grid__desc{grid-column:5 / span 6;grid-row:1;-webkit-line-clamp:2}
+}
+
 /* ---- components/organisms/document-list.css ---- */
 /* DocumentList: FileLinks grouped under headings (handbooks, forms, policies). From 960px each group's heading and its one-line note hold the left
    four columns and the files run in the right eight, the index layout shared with Accordion, Timeline and ContactBlock.
@@ -1574,6 +1809,51 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-event-list__month-head{position:sticky;top:calc(var(--layout-header) + var(--space-4));display:grid;gap:var(--space-1);
     padding-top:var(--space-5);border-top:var(--border-hair) solid var(--line-strong)}
   .nu-event-list__months{gap:var(--space-8)}
+}
+
+/* ---- components/organisms/event-series.css ---- */
+/* EventSeries: an umbrella week or festival that gathers events with their own pages. The series' name and dates up top (the dates set as
+   light figures under the heading's reading edge), then one column per day: a DateBlock on a rule, and that day's events as hairline rows,
+   each one link to its own page with its time and the event it belongs to. Events that float across the week sit in an "All week" column first.
+   From 960px the days share the width equally; with the gutter between them, three days land on columns 1, 5 and 9, four on 1, 4, 7 and 10.
+   Below 960px each day is a row: the DateBlock beside its events. */
+.nu-event-series{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-7);min-width:0}
+.nu-event-series__head{display:grid;gap:var(--space-4);align-content:start;min-width:0}
+.nu-event-series__intro{display:grid;gap:var(--space-4);justify-items:start;min-width:0}
+.nu-event-series__dates{margin:0;font-size:var(--fs-h3);font-weight:var(--fw-title);line-height:var(--lh-title);letter-spacing:var(--tracking-title);font-variant-numeric:tabular-nums lining-nums}
+.nu-event-series__intro > .nu-text{color:var(--on-surface-2)}
+.nu-event-series__intro .nu-arrow-link{margin-top:calc(var(--space-2) * -1)}
+
+.nu-event-series__days{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-6) var(--layout-gutter);min-width:0;margin:0;padding:0;list-style:none}
+.nu-event-series__day{display:grid;grid-template-columns:var(--space-9) minmax(0,1fr);gap:var(--space-4) var(--space-5);align-content:start;min-width:0;
+  padding-top:var(--space-4);border-top:var(--border-hair) solid var(--line-strong)}
+.nu-event-series__day > .nu-date-block{margin:0}
+.nu-event-series__events{display:grid;align-content:start;min-width:0;margin:0;padding:0;list-style:none}
+
+/* One event: time, title, the event it belongs to. The title's link stretches over the row. */
+.nu-event-series__event{position:relative;display:grid;gap:var(--space-1);padding-block:var(--space-3) var(--space-4);border-bottom:var(--border-hair) solid var(--line)}
+.nu-event-series__event:first-child{padding-top:0}
+.nu-event-series__time{margin:0;font-size:var(--fs-small);font-weight:var(--fw-medium);line-height:var(--lh-title);color:var(--on-surface-2);font-variant-numeric:tabular-nums lining-nums}
+.nu-event-series__event .nu-heading{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
+.nu-event-series__event .nu-heading .nu-icon{flex:none;color:var(--on-surface-muted);transition:translate var(--dur-base) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+.nu-event-series__link{color:inherit;text-decoration:underline;text-decoration-thickness:var(--border-hair);text-underline-offset:.16em;text-decoration-color:transparent;
+  transition:text-decoration-color var(--dur-fast) var(--ease-out)}
+.nu-event-series__link::after{content:"";position:absolute;inset:0;z-index:1}
+.nu-event-series__link:focus-visible{outline:0}
+.nu-event-series__event:has(.nu-event-series__link:focus-visible){outline:var(--border-focus) solid var(--focus);outline-offset:var(--space-1)}
+.nu-event-series__event:hover .nu-event-series__link{text-decoration-color:currentColor}
+.nu-event-series__event:hover .nu-heading .nu-icon{color:var(--on-surface);translate:var(--space-1) 0}
+/* To be announced: the date is not set yet; the row says so in words, not in red. */
+.nu-event-series__event--tba .nu-event-series__time{color:var(--on-surface-muted);font-weight:var(--fw-text)}
+
+@media (min-width:960px){
+  .nu-event-series{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}
+  .nu-event-series > *{grid-column:1 / -1}
+  .nu-event-series__head{grid-template-columns:subgrid;column-gap:var(--layout-gutter);align-items:first baseline}
+  .nu-event-series__head > .nu-heading{grid-column:1 / span 4}
+  .nu-event-series__intro{grid-column:5 / -1}
+  .nu-event-series__days{grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none}
+  .nu-event-series__day{grid-template-columns:minmax(0,1fr);row-gap:var(--space-5)}
 }
 
 /* ---- components/organisms/expanding-cards.css ---- */
@@ -2126,6 +2406,50 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
 .nu-hero-page__phone-scrim{display:none}
 @media not all and (min-width:960px){.nu-hero-page__phone-scrim{display:block}}
 
+/* Focal point (el-10, ea-05): each photograph names where its subject is, per breakpoint, as custom properties on __media:
+   --hero-page-focus (from 960px) and --hero-page-focus-phone (below). The crop moves; the copy never sits on a face. */
+.nu-hero-page__media>.nu-image{object-position:var(--hero-page-focus,50% 50%)}
+@media not all and (min-width:960px){
+  .nu-hero-page__media>.nu-image{object-position:var(--hero-page-focus-phone,var(--hero-page-focus,50% 50%))}
+}
+
+/* Display (el-05): a unit's front door. The band takes nearly a screen, the H1 is display-xl (set `nu-heading--display-xl`) and the copy
+   gets the width a two-line display title needs. One per site, on its home page; every other page uses tall or medium. */
+.nu-hero-page--display{min-height:calc(var(--space-10) * 6.5);padding-bottom:var(--space-9)}
+.nu-hero-page--display .nu-hero-page__copy{max-width:calc(var(--layout-max) * .72);gap:var(--space-6)}
+.nu-hero-page--display .nu-hero-page__copy .nu-heading{max-width:14ch}
+.nu-hero-page--display .nu-hero-page__copy .nu-text--lead{max-width:48ch}
+
+/* Sub-brand (ge-01): a campaign lockup over the H1, and the headline figure with its facts on the right, on the foot of the copy. */
+.nu-hero-page__mark{display:block;width:auto;height:var(--space-8);max-width:100%;object-fit:contain;object-position:left center;margin-bottom:var(--space-2)}
+.nu-hero-page__facts{display:grid;gap:var(--space-5);align-content:end;min-width:0;margin-top:var(--space-7)}
+.nu-hero-page__figure{padding-top:0;border-top:0}
+.nu-hero-page__figure .nu-stat__text{max-width:none;color:var(--on-surface)}
+.nu-hero-page__qualifier{margin-inline-end:var(--space-3);font-size:var(--fs-lead);font-weight:var(--fw-text);letter-spacing:var(--tracking-body);color:var(--on-surface-2)}
+@media (min-width:960px){
+  .nu-hero-page:has(>.nu-hero-page__facts){grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);align-items:end}
+  .nu-hero-page:has(>.nu-hero-page__facts)>.nu-hero-page__copy{grid-column:1 / span 8;max-width:none}
+  .nu-hero-page__facts{grid-column:9 / -1;margin-top:0}
+}
+@media not all and (min-width:960px){
+  .nu-hero-page__mark{height:var(--space-7)}
+}
+
+/* Stack (el-10): on phones the photograph stands above the title at 4:5 (3:2 on tablets) instead of hiding under a full shade.
+   The floating header keeps a short shade at the top of the frame; the foot of the frame melts into the band's ground, where the copy starts. */
+@media not all and (min-width:960px){
+  .nu-hero-page--stack{min-height:0;padding:0}
+  .nu-hero-page--stack .nu-hero-page__media{position:relative;inset:auto;z-index:auto;aspect-ratio:3/2}
+  .nu-hero-page--stack .nu-hero-page__media>.nu-scrim:not(.nu-scrim--grain){display:none}
+  .nu-hero-page--stack .nu-hero-page__media::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(to bottom,var(--scrim) 0%,transparent 28%,transparent 72%,var(--surface) 100%)}
+  .nu-hero-page--stack .nu-hero-page__copy{padding:var(--space-5) var(--layout-edge) var(--space-7)}
+  .nu-hero-page--stack .nu-hero-page__facts{margin:0;padding:0 var(--layout-edge) var(--space-7)}
+}
+@media not all and (min-width:720px){
+  .nu-hero-page--stack .nu-hero-page__media{aspect-ratio:4/5}
+}
+
 /* ---- components/organisms/hero-title.css ---- */
 /* HeroTitle: the text-only top of a reading page (profiles, policies, detail pages, campaigns). Breadcrumb, H1, lead and the page's facts,
    on whatever ground the page sets: Canvas for reading, Night for a campaign. A hairline closes it; the type does the work. */
@@ -2143,6 +2467,35 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-hero-title{grid-template-columns:minmax(0,1fr);padding-top:var(--space-7);padding-bottom:var(--space-6)}
   .nu-hero-title__main,.nu-hero-title__facts,.nu-hero-title__rule{grid-column:1}
 }
+
+/* Sub-brand (ge-01): a campaign or programme's own lockup over the H1, sized like a line of display type so it reads as a title, not a logo strip.
+   The lockup is the owner's artwork in the ground's ink (a light mark on Night, a dark one on Canvas); it is never recoloured here. */
+.nu-hero-title__mark{display:block;width:auto;height:var(--space-8);max-width:100%;object-fit:contain;object-position:left center;margin-bottom:var(--space-2)}
+.nu-hero-title__main .nu-breadcrumb+.nu-hero-title__mark{margin-top:var(--space-2)}
+/* A facts wrapper holds the headline figure over its KeyValue rows, on the foot of the title block. */
+div.nu-hero-title__facts{display:grid;gap:var(--space-6);align-content:end;align-self:end}
+/* The headline figure: a Stat whose qualifier ("Up to") sits on the numeral's baseline in the lead's size and weight. */
+.nu-hero-title__figure{padding-top:0;border-top:0}
+.nu-hero-title__figure .nu-stat__text{max-width:none}
+.nu-hero-title__qualifier{margin-inline-end:var(--space-3);font-size:var(--fs-lead);font-weight:var(--fw-text);letter-spacing:var(--tracking-body);color:var(--on-surface-2)}
+@media not all and (min-width:960px){
+  .nu-hero-title__mark{height:var(--space-7)}
+}
+
+/* Figure (ea-07): a decorative picture beside the title that never sets the hero's height. The figure cell stretches to the title
+   block and the picture fills it, so the breadcrumb stays at the top of the band; below 960px, where the hero stacks, it is dropped. */
+.nu-hero-title--figure{align-items:stretch}
+.nu-hero-title--figure .nu-hero-title__main{align-content:start}
+.nu-hero-title__media{display:none;position:relative;min-height:0;margin:0;overflow:hidden;background:var(--surface-sunken)}
+@media (min-width:960px){
+  .nu-hero-title--figure .nu-hero-title__main{grid-column:1 / span 7}
+  .nu-hero-title__media{display:block;grid-column:11 / -1}
+  .nu-hero-title__media>.nu-image{position:absolute;inset:0;width:100%;height:100%;object-position:var(--hero-title-focus,50% 50%)}
+}
+/* The hero's own closing rule ends the facts: the KeyValue drops its bottom hairline and its last row's foot, so its last line sits on
+   the same bottom as the meta line beside it instead of a second rule a few pixels above the first. */
+div.nu-hero-title__facts>.nu-key-value--inline{border-bottom:0}
+div.nu-hero-title__facts>.nu-key-value--inline>.nu-key-value__row:last-child{padding-bottom:0}
 
 /* ---- components/organisms/in-page-nav.css ---- */
 /* InPageNav: jump links to the sections of one long page (experiential's sticky quick links), as 22a's hairline row. Sticks under the LocalHeader.
@@ -2261,6 +2614,22 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-logo-wall--6{grid-template-columns:repeat(6,minmax(0,1fr))}
 }
 
+/* Open: no cell lines. One hairline above the wall, then marks floating in open space, each sized to the same optical weight.
+   A mark's file is trimmed to its artwork and states its width-to-height ratio (--mark-ratio on the img); the wall turns that into a width that
+   grows with the ratio's 0.6 power, so a 7:1 wordmark runs wider and lower than a 1:1 crest, and neither shouts. The size scales with the tile (cqi).
+   Without a ratio a mark falls back to a common box. Night inverts raster marks through --mark-filter, so ink marks stay legible on both grounds. */
+.nu-logo-wall--open{gap:var(--space-2) var(--space-5);padding:var(--space-5) 0 0;border-top:var(--border-hair) solid var(--line)}
+.nu-logo-wall--open .nu-logo-tile{container-type:inline-size;margin:0;padding:var(--space-4) var(--space-3);border:0;min-height:var(--space-9)}
+.nu-logo-wall--open .nu-logo-tile__mark{--nu-mark-size:clamp(var(--space-7),30cqi,calc(var(--space-8) + var(--space-2)));
+  width:calc(var(--nu-mark-size) * pow(var(--mark-ratio,2.5),.6));height:auto;max-width:88%;max-height:calc(var(--nu-mark-size) * 1.1);object-fit:contain}
+.nu-logo-wall--open img.nu-logo-tile__mark{opacity:.88}
+.nu-logo-wall--open a.nu-logo-tile:hover{background:transparent}
+.nu-logo-wall--open a.nu-logo-tile:hover img.nu-logo-tile__mark{opacity:1}
+/* The foot: a quiet Show all under a long wall that shows its first twelve. */
+.nu-logo-wall__foot{display:flex;justify-content:center;padding-top:var(--space-4)}
+.nu-logo-wall > li[hidden]{display:none}
+@media (min-width:720px){.nu-logo-wall--open{gap:var(--space-3) var(--space-6)}.nu-logo-wall--open .nu-logo-tile{padding-block:var(--space-5);min-height:var(--space-10)}}
+
 /* ---- components/organisms/media-text.css ---- */
 /* MediaText: a photograph or film beside its copy, on a 12-column grid. Media seven columns and copy five (the default), or 5/7 with --narrow.
    --reverse puts the media on the right. --bleed lets the media run past the content edge to meet the viewport, as 22a's spotlight rows do.
@@ -2299,6 +2668,24 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-media-text--bleed.nu-media-text--reverse .nu-media-text__media{grid-column:7 / -1}
   .nu-media-text--bleed.nu-media-text--reverse .nu-media-text__copy{grid-column:2 / span 4}
   .nu-media-text--bleed .nu-media-text__media>.nu-image,.nu-media-text--bleed .nu-media-text__media>.nu-video{height:100%;min-height:calc(var(--space-10) * 4.5);aspect-ratio:auto}
+}
+
+/* Overlay (el-15): the Persuade-page band. The photograph fills the band edge to edge, a left scrim and grain carry the copy on the
+   picture's left six columns. Night only (data-mode="dark" on the section); copy on the left only, so it never needs a reverse.
+   Phones stack the picture (3:2, edge to edge) above the copy on Night instead of shading the whole frame black. */
+.nu-media-text--overlay{position:relative;isolation:isolate;overflow:hidden;padding:0 0 var(--space-8)}
+.nu-media-text--overlay .nu-media-text__media>.nu-scrim:not(.nu-scrim--grain){display:none}
+.nu-media-text--overlay .nu-media-text__media::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,transparent 60%,var(--surface) 100%)}
+.nu-media-text--overlay .nu-media-text__copy{padding-inline:var(--layout-edge)}
+.nu-media-text--overlay .nu-media-text__copy .nu-heading{max-width:18ch}
+@media (min-width:960px){
+  .nu-media-text--overlay{min-height:calc(var(--space-10) * 5);padding:var(--space-9) var(--layout-edge);align-items:end}
+  .nu-media-text--overlay .nu-media-text__media{position:absolute;inset:0;z-index:-1;grid-column:auto;grid-row:auto}
+  .nu-media-text--overlay .nu-media-text__media>.nu-image{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;object-position:var(--media-text-focus,50% 50%)}
+  .nu-media-text--overlay .nu-media-text__media>.nu-scrim:not(.nu-scrim--grain){display:block}
+  .nu-media-text--overlay .nu-media-text__media::after{content:none}
+  .nu-media-text--overlay .nu-media-text__copy{grid-column:1 / span 6;grid-row:1;padding:0}
+  .nu-media-text--overlay .nu-media-text__copy .nu-text{max-width:48ch;color:var(--on-surface-2)}
 }
 
 /* ---- components/organisms/mega-menu.css ---- */
@@ -2390,6 +2777,88 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-mobile-menu__section .nu-mobile-menu__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-7)}
 }
 
+/* ---- components/organisms/office-profile.css ---- */
+/* OfficeProfile: one office of a unit on the reading edge. From 960px the office's name and its lead contact (a small square portrait, name,
+   title, phone and email) hold columns 1–4 on a strong rule; from column 5 the description at lead size, a short list of what the office
+   handles (hairline rows, two up from 720px) and one onward link. An optional wide photograph runs across the full content width after it,
+   so a stack of offices alternates text and picture without the zigzag. Each profile is an anchor target for InPageNav. */
+.nu-office-profile{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-6) var(--layout-gutter);min-width:0;scroll-margin-top:calc(var(--layout-header) + var(--space-5))}
+.nu-office-profile__head{display:grid;gap:var(--space-6);align-content:start;min-width:0;padding-top:var(--space-4);border-top:var(--border-rule) solid var(--on-surface)}
+.nu-office-profile__head > .nu-heading{max-width:16ch}
+
+/* The lead: portrait beside name and title, the two contacts under them on the name's edge. */
+.nu-office-profile__lead{display:grid;grid-template-columns:var(--space-9) minmax(0,1fr);gap:var(--space-1) var(--space-4);align-items:start;margin:0;min-width:0}
+.nu-office-profile__lead .nu-image{grid-row:1 / span 3}
+.nu-office-profile__who{display:grid;gap:var(--space-1);align-content:start;min-width:0;padding-top:var(--space-1)}
+.nu-office-profile__who .nu-heading{font-weight:var(--fw-medium);font-size:var(--fs-body);letter-spacing:var(--tracking-body)}
+.nu-office-profile__who .nu-text--small{color:var(--on-surface-2)}
+.nu-office-profile__reach{grid-column:2;display:grid;gap:var(--space-1);margin-top:var(--space-2);font-size:var(--fs-small)}
+.nu-office-profile__reach .nu-contact-item--inline{min-height:var(--space-5);font-variant-numeric:tabular-nums lining-nums}
+
+.nu-office-profile__body{display:grid;gap:var(--space-6);justify-items:start;align-content:start;min-width:0}
+.nu-office-profile__body > .nu-text--lead{color:var(--on-surface);max-width:60ch}
+.nu-office-profile__handles{display:grid;gap:var(--space-3);justify-self:stretch;min-width:0}
+.nu-office-profile__handles > .nu-heading{color:var(--on-surface-2)}
+.nu-office-profile__list{display:grid;grid-template-columns:minmax(0,1fr);column-gap:var(--layout-gutter);margin:0;padding:0;list-style:none;border-bottom:var(--border-hair) solid var(--line)}
+.nu-office-profile__list > li{padding-block:var(--space-3);border-top:var(--border-hair) solid var(--line);font-size:var(--fs-body);font-weight:var(--fw-text);line-height:var(--lh-title);color:var(--on-surface)}
+.nu-office-profile__body > .nu-arrow-link{margin-top:calc(var(--space-2) * -1)}
+
+/* The wide photograph between offices: square corners, 21:9, full content width. */
+.nu-office-profile__media{margin:var(--space-5) 0 0}
+.nu-office-profile__media .nu-image{aspect-ratio:21/9}
+
+@media (min-width:720px){
+  .nu-office-profile__list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* Two up, each column closes itself; the list's bottom rule would double the last row, so the rows own it. */
+  .nu-office-profile__list{border-bottom:0}
+  .nu-office-profile__list > li{border-bottom:var(--border-hair) solid var(--line);margin-bottom:calc(var(--border-hair) * -1)}
+}
+@media (min-width:960px){
+  .nu-office-profile{grid-template-columns:repeat(12,minmax(0,1fr));align-items:start}
+  .nu-office-profile__head{grid-column:1 / span 4}
+  .nu-office-profile__body{grid-column:5 / -1;padding-top:var(--space-4);border-top:var(--border-hair) solid var(--line)}
+  .nu-office-profile__media{grid-column:1 / -1;margin-top:var(--space-7)}
+}
+
+/* ---- components/organisms/pathway-cards.css ---- */
+/* PathwayCards: a hub's two to four child pages as equal photo tiles. Each tile is one PosterCard link: the photograph under the poster scrim,
+   then the page's name, one line of description and a circled arrow, all set on the photograph's lower edge. The frame is always Night,
+   so the tiles read the same on a Canvas or Night band. Titles hang from a shared line above the descriptions (their last lines align;
+   longer names grow upward), and the arrows share the tiles' bottom edge. */
+.nu-pathway-cards{container:pathway-cards / inline-size;display:grid;gap:var(--space-6);min-width:0}
+.nu-pathway-cards__items{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4);margin:0;padding:0;list-style:none}
+.nu-pathway-cards__items>li{display:grid;min-width:0}
+
+/* The PosterCard's frame, landscape-square on phones and a tall poster once tiles sit side by side. */
+.nu-pathway-cards .nu-poster-card{height:100%}
+.nu-pathway-cards .nu-poster-card__frame{aspect-ratio:1}
+.nu-pathway-cards__body{position:absolute;z-index:2;inset:auto 0 0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:var(--space-3) var(--space-4);
+  padding:var(--space-5);color:var(--on-surface)}
+.nu-pathway-cards__text{display:grid;gap:var(--space-2);min-width:0}
+.nu-pathway-cards__title{text-wrap:balance}
+.nu-pathway-cards__desc{max-width:36ch;color:var(--on-surface-2);text-wrap:pretty;transition:color var(--dur-fast) var(--ease-out)}
+/* The cue is IconButton's outline circle on a span: the tile is the target. */
+.nu-pathway-cards__cue{transition:background-color var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),translate var(--dur-base) var(--ease-out)}
+.nu-pathway-cards .nu-poster-card:hover .nu-pathway-cards__cue{background:var(--action);border-color:var(--action);color:var(--on-action);translate:var(--space-1) 0}
+.nu-pathway-cards .nu-poster-card:hover .nu-pathway-cards__desc{color:var(--on-surface)}
+.nu-pathway-cards .nu-poster-card:hover .nu-pathway-cards__title{text-decoration:underline;text-decoration-thickness:var(--border-hair);text-underline-offset:.16em}
+
+@container pathway-cards (min-width:720px){
+  .nu-pathway-cards__items{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+  .nu-pathway-cards .nu-poster-card__frame{aspect-ratio:3/4}
+  /* Side by side, every description holds three lines, so the descriptions start on one line and the titles end on one. */
+  .nu-pathway-cards__desc{min-height:calc(var(--lh-title) * 4em)}
+  /* Two tiles are wide: a square keeps them from towering over the page. */
+  .nu-pathway-cards__items:has(>li:nth-child(2):last-child) .nu-poster-card__frame{aspect-ratio:1}
+}
+@container pathway-cards (min-width:960px){
+  .nu-pathway-cards__items{gap:var(--space-5)}
+  .nu-pathway-cards .nu-poster-card__frame{aspect-ratio:2/3}
+  .nu-pathway-cards__items:has(>li:nth-child(2):last-child) .nu-poster-card__frame{aspect-ratio:4/3}
+  .nu-pathway-cards__items:has(>li:nth-child(4)) .nu-poster-card__frame{aspect-ratio:3/5}
+  .nu-pathway-cards__body{padding:var(--space-6)}
+}
+
 /* ---- components/organisms/pathway-list.css ---- */
 /* PathwayList: the homepage's degree pathways (www L-18) as a list of large Light text links on full-width hairlines.
    Each row is one link: the pathway name at display size, an optional one-sentence description, and an arrow that slides on hover.
@@ -2428,6 +2897,80 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-pathway-list--md .nu-pathway-list__link{padding-block:var(--space-5)}
 }
 
+/* ---- components/organisms/point-list.css ---- */
+/* PointList: a short run of claims, each a hairline row: the claim as an h4, then an optional one-sentence body under it. The rows start on
+   column 5, the reading edge, so they line up under a SectionHeader or under the list's own heading in columns 1–4. Numbered lists hang their
+   numerals in the gutter left of that edge from 960px, so the claims keep the edge; below 960px the numeral takes a narrow column of its own.
+   Replaces the page-only `st-points` pattern and the run-in "Term—explanation" bullets poured into MediaText. */
+.nu-point-list{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5);min-width:0}
+.nu-point-list__head{display:grid;gap:var(--space-3);align-content:start;max-width:var(--layout-prose)}
+.nu-point-list__head>.nu-text{color:var(--on-surface-2)}
+.nu-point-list__items{margin:0;padding:0;list-style:none;border-top:var(--border-hair) solid var(--line);counter-reset:nu-point}
+.nu-point-list__item{position:relative;display:grid;gap:var(--space-2);padding-block:var(--space-5);border-bottom:var(--border-hair) solid var(--line);counter-increment:nu-point}
+.nu-point-list__claim{max-width:40ch;text-wrap:balance}
+.nu-point-list__body{max-width:var(--layout-prose);color:var(--on-surface-2);text-wrap:pretty}
+
+/* Numbered: the numeral is generated from the list's order, set small and tabular in the muted ink. */
+.nu-point-list--numbered .nu-point-list__item{grid-template-columns:var(--space-6) minmax(0,1fr);column-gap:var(--space-3)}
+.nu-point-list--numbered .nu-point-list__item::before{content:counter(nu-point,decimal-leading-zero);grid-row:1 / span 2;
+  padding-top:calc((var(--fs-h4) * var(--lh-title) - var(--fs-small) * var(--lh-title)) / 2);
+  font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-muted);font-variant-numeric:tabular-nums lining-nums}
+.nu-point-list--numbered .nu-point-list__item>*{grid-column:2}
+
+@media (min-width:960px){
+  .nu-point-list{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);align-items:start}
+  .nu-point-list>*{grid-column:5 / -1}
+  .nu-point-list>.nu-point-list__head{grid-column:1 / span 4;grid-row:1 / span 2;position:sticky;top:calc(var(--layout-header) + var(--space-5));
+    /* The h2's cap height lands on the first claim's cap height (the row's space-6 padding, less the h2's taller line box). */
+    padding-top:calc(var(--space-6) - var(--space-3))}
+  /* Numbered: the head keeps clear of the numerals hanging in the gutter. */
+  .nu-point-list--numbered>.nu-point-list__head{padding-inline-end:var(--space-6)}
+  .nu-point-list__item{padding-block:var(--space-6)}
+  /* Numerals hang in the gutter, right-aligned to the reading edge, so the claims stay on column 5. */
+  .nu-point-list--numbered .nu-point-list__item{display:grid;grid-template-columns:minmax(0,1fr)}
+  .nu-point-list--numbered .nu-point-list__item>*{grid-column:1}
+  .nu-point-list--numbered .nu-point-list__item::before{position:absolute;grid-row:auto;inset-inline-end:calc(100% + var(--space-4));top:var(--space-6)}
+}
+
+/* ---- components/organisms/portrait-wall.css ---- */
+/* PortraitWall: the people of a unit as one picture. A gapless, full-bleed wall of square portraits, each a link to that person; the name rises
+   on a scrim on hover and focus, and the rest of the wall steps back. From 960px the heading slot holds columns 1–4 on the content edge and the
+   faces start on column 5, the reading edge, and run to the right edge of the window; below that the heading sits above a full-width wall.
+   Columns are chosen so 54 faces (a whole unit) fill every row: 6 on phones, 9 from 720px. The strip variant is one row of 12 (6 by 2 on phones). */
+.nu-portrait-wall{display:grid;grid-template-columns:minmax(0,1fr);row-gap:var(--space-6);min-width:0;padding-block:var(--space-8) 0;background:var(--surface);color:var(--on-surface)}
+.nu-portrait-wall__head{display:grid;gap:var(--space-4);justify-items:start;align-content:end;min-width:0;padding-inline:var(--layout-edge)}
+.nu-portrait-wall__head .nu-text{max-width:44ch;color:var(--on-surface-2)}
+.nu-portrait-wall__head .nu-arrow-link{margin-top:calc(var(--space-2) * -1)}
+.nu-portrait-wall__grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));min-width:0;margin:0;padding:0;list-style:none;background:var(--surface-sunken)}
+.nu-portrait-wall__grid > li{display:grid;min-width:0}
+.nu-portrait-wall__face{position:relative;display:block;overflow:hidden;color:var(--on-surface)}
+.nu-portrait-wall__face .nu-image{object-position:50% 30%;transition:opacity var(--dur-base) var(--ease-out),scale var(--dur-slow) var(--ease-out)}
+/* The name: on a scrim at the foot of the portrait, shown on hover and focus. The grid wears Night (data-mode="dark") so the scrim and ink are photo-safe on either ground. */
+.nu-portrait-wall__name{position:absolute;inset:auto 0 0;padding:var(--space-5) var(--space-2) var(--space-2);font-size:var(--fs-label);font-weight:var(--fw-medium);line-height:var(--lh-title);
+  background:linear-gradient(to top,var(--scrim),transparent);opacity:0;translate:0 var(--space-1);transition:opacity var(--dur-fast) var(--ease-out),translate var(--dur-fast) var(--ease-out)}
+.nu-portrait-wall__face:hover .nu-portrait-wall__name,.nu-portrait-wall__face:focus-visible .nu-portrait-wall__name{opacity:1;translate:0 0}
+.nu-portrait-wall__face:hover .nu-image{scale:1.04}
+.nu-portrait-wall__grid:has(.nu-portrait-wall__face:hover) .nu-portrait-wall__face:not(:hover) .nu-image{opacity:.5}
+.nu-portrait-wall__face:focus-visible{outline-offset:calc(var(--border-focus) * -1);z-index:1}
+
+@media (min-width:720px){
+  .nu-portrait-wall__grid{grid-template-columns:repeat(9,minmax(0,1fr))}
+  .nu-portrait-wall__name{font-size:var(--fs-small)}
+}
+@media (min-width:960px){
+  /* Head in columns 1–4 of the content grid; faces from column 5 to the window's edge. Both sit in one grid cell, so every percentage
+     (and the edge token) resolves against the full band width: the head is the edge plus four columns, the faces start a gutter later. */
+  .nu-portrait-wall:not(.nu-portrait-wall--strip){padding-block:0}
+  .nu-portrait-wall:not(.nu-portrait-wall--strip) > *{grid-area:1 / 1}
+  .nu-portrait-wall:not(.nu-portrait-wall--strip) .nu-portrait-wall__head{box-sizing:border-box;justify-self:start;align-self:end;
+    width:calc(var(--layout-edge) + (100% - 2 * var(--layout-edge)) / 3 - var(--layout-gutter) * 2 / 3);padding:var(--space-8) 0 var(--space-8) var(--layout-edge)}
+  .nu-portrait-wall:not(.nu-portrait-wall--strip) .nu-portrait-wall__grid{margin-left:calc(var(--layout-edge) + (100% - 2 * var(--layout-edge)) / 3 + var(--layout-gutter) / 3)}
+}
+
+/* Strip: one row, heading above. */
+.nu-portrait-wall--strip .nu-portrait-wall__grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (min-width:720px){.nu-portrait-wall--strip .nu-portrait-wall__grid{grid-template-columns:repeat(12,minmax(0,1fr))}}
+
 /* ---- components/organisms/profile-header.css ---- */
 /* ProfileHeader: the top of a person's page. A square-cornered 4:5 portrait beside the name (the page's H1), the title, department Tags,
    the ways to reach them as ContactItems, and a "Next profile" ArrowLink on the closing hairline. The text column is set to the portrait's height:
@@ -2453,6 +2996,23 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-profile-header__media + .nu-profile-header__body{grid-column:5 / -1;align-self:stretch;display:flex;flex-direction:column}
   .nu-profile-header__media + .nu-profile-header__body > .nu-profile-header__intro{flex:1 0 auto}
 }
+
+/* Contact (ea-11): the ways to reach them sit in the intro, one line under the role, where people look for them; no rule, no foot.
+   The portrait drops to three columns so the name, role and contact line fill its height instead of leaving a field of Canvas;
+   the text still starts on column 5. The pager moves to the end of the page. */
+.nu-profile-header__contact--inline{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-6);margin-top:var(--space-2);padding-top:0;border-top:0}
+.nu-profile-header__contact--inline .nu-contact-item--inline{min-height:var(--layout-target)}
+@media (min-width:960px){
+  .nu-profile-header--contact .nu-profile-header__media{grid-column:1 / span 3}
+  .nu-profile-header--contact .nu-profile-header__media + .nu-profile-header__body{align-self:center}
+}
+
+/* Pager: previous and next profile, at the foot of the biography (after the reader has read it), on one hairline.
+   Quiet: two ArrowLinks at the edges, each naming the person. It takes the bio's column; the page template places it. */
+.nu-profile-header__pager{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--space-3) var(--space-6);padding-top:var(--space-4);border-top:var(--border-hair) solid var(--line)}
+.nu-profile-header__pager .nu-arrow-link{color:var(--on-surface-2)}
+.nu-profile-header__pager .nu-arrow-link:hover{color:var(--link-hover)}
+.nu-profile-header__pager .nu-arrow-link:last-child{margin-inline-start:auto;text-align:right}
 
 /* ---- components/organisms/program-card.css ---- */
 /* ProgramCard: one shape for a study-abroad program, an experiential opportunity or an entrepreneurship offering. One link (the title, stretched over the card).
@@ -2579,6 +3139,64 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
 .nu-prose__updated{margin-top:var(--space-7);padding-top:var(--space-3);border-top:var(--border-hair) solid var(--line);
   font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-muted);font-variant-numeric:tabular-nums lining-nums}
 :where(.nu-prose) > .nu-prose__updated{margin-top:var(--space-7)}
+
+/* ---- components/organisms/publication-list.css ---- */
+/* PublicationList: an office's published work (reports, policy briefs, surveys) as publications, not file downloads. Each item is one link:
+   the cover, the title, month and year, a one-line summary and the action with its format and size (Read the brief, PDF, 20 MB).
+   From 960px every text edge in the band sits on column 5: the head's lead, the featured item's title and every item's title; covers hang
+   to the left of that edge (the featured cover fills columns 1–4, the rest sit in columns 3–4), so the covers make a ragged left and the reading
+   edge stays straight. Items separate with full-width hairlines. */
+.nu-publication-list{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-7);min-width:0}
+.nu-publication-list__head{display:grid;gap:var(--space-4);align-content:start;min-width:0}
+.nu-publication-list__head .nu-text{color:var(--on-surface-2)}
+.nu-publication-list__items{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;margin:0;padding:0;list-style:none}
+
+.nu-publication-list__item{position:relative;display:grid;grid-template-columns:var(--space-9) minmax(0,1fr);gap:var(--space-5);align-items:start;min-width:0;
+  padding-block:var(--space-6);border-top:var(--border-hair) solid var(--line)}
+.nu-publication-list__item:last-child{border-bottom:var(--border-hair) solid var(--line)}
+/* The cover: a page, so it keeps a hairline edge against a ground of the same tone. Square corners like every image. */
+.nu-publication-list__cover{display:block;overflow:hidden;background:var(--surface-sunken);outline:var(--border-hair) solid var(--line);outline-offset:calc(var(--border-hair) * -1)}
+.nu-publication-list__cover .nu-image{transition:scale var(--dur-slow) var(--ease-out)}
+.nu-publication-list__body{display:grid;gap:var(--space-3);justify-items:start;align-content:start;min-width:0}
+.nu-publication-list__body > .nu-heading{max-width:30ch}
+.nu-publication-list__body > .nu-text:not(.nu-text--meta){color:var(--on-surface-2)}
+.nu-publication-list__link{color:inherit;text-decoration:underline;text-decoration-thickness:var(--border-hair);text-underline-offset:.16em;text-decoration-color:transparent;
+  transition:text-decoration-color var(--dur-fast) var(--ease-out)}
+.nu-publication-list__link::after{content:"";position:absolute;inset:0;z-index:1}
+.nu-publication-list__link:focus-visible{outline:0}
+.nu-publication-list__item:has(.nu-publication-list__link:focus-visible){outline:var(--border-focus) solid var(--focus);outline-offset:var(--space-1)}
+/* The action is ArrowLink's look on a span (the item is the target); the format and size trail it, quieter. */
+.nu-publication-list__cue{min-height:0;margin-top:var(--space-2)}
+.nu-publication-list__format{font-weight:var(--fw-text);color:var(--on-surface-muted);font-variant-numeric:tabular-nums lining-nums}
+.nu-publication-list__item:hover .nu-publication-list__link{text-decoration-color:currentColor}
+.nu-publication-list__item:hover .nu-publication-list__cover .nu-image{scale:1.03}
+.nu-publication-list__item:hover .nu-publication-list__cue{color:var(--link-hover)}
+.nu-publication-list__item:hover .nu-publication-list__cue .nu-icon{translate:var(--space-1) 0}
+
+/* Featured: the flagship report first, larger: a bigger cover, the title a step up, the summary at lead size. */
+.nu-publication-list__item--featured{grid-template-columns:minmax(0,1fr);gap:var(--space-5)}
+.nu-publication-list__item--featured .nu-publication-list__cover{width:min(100%,calc(var(--space-10) * 2))}
+.nu-publication-list__item--featured .nu-publication-list__body > .nu-heading{max-width:24ch}
+
+@media (min-width:720px){
+  .nu-publication-list__item{grid-template-columns:var(--space-10) minmax(0,1fr);column-gap:var(--space-6)}
+  .nu-publication-list__item--featured{grid-template-columns:calc(var(--space-10) * 2) minmax(0,1fr);align-items:end}
+  .nu-publication-list__item--featured .nu-publication-list__cover{width:auto}
+}
+@media (min-width:960px){
+  .nu-publication-list{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}
+  .nu-publication-list > *{grid-column:1 / -1}
+  .nu-publication-list__head{grid-template-columns:subgrid;column-gap:var(--layout-gutter);align-items:first baseline}
+  .nu-publication-list__head > .nu-heading{grid-column:1 / span 4}
+  .nu-publication-list__head > :not(.nu-heading){grid-column:5 / -1}
+  .nu-publication-list__items{grid-template-columns:subgrid}
+  .nu-publication-list__item,.nu-publication-list__item--featured{grid-column:1 / -1;grid-template-columns:subgrid;column-gap:var(--layout-gutter)}
+  .nu-publication-list__cover{grid-column:3 / span 2}
+  .nu-publication-list__body{grid-column:5 / span 6}
+  .nu-publication-list__item--featured{padding-top:var(--space-7)}
+  .nu-publication-list__item--featured .nu-publication-list__cover{grid-column:1 / span 4}
+  .nu-publication-list__item--featured .nu-publication-list__body{grid-column:5 / span 7;padding-bottom:var(--space-2)}
+}
 
 /* ---- components/organisms/rail.css ---- */
 /* Rail: 22a's co-op journey. A horizontal rail of equal-height panels that alternates photographs of real placements (each a link to its
@@ -2724,16 +3342,64 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
 .nu-section-nav__disclosure .nu-section-nav__list>li:last-child{border-bottom:0}
 .nu-section-nav__summary:focus-visible{outline-offset:calc(var(--border-focus) * -1)}
 
+/* Horizontal (SiblingNav): sibling pages as one row of text links on a hairline, under a hero. Pathway switchers (Academic · Professional ·
+   Extracurricular), Team / Leadership, a campaign's own pages (Next Up). Not sticky and not anchors: that is InPageNav. The current page turns
+   Medium and wears a 2px underline sitting on the row's hairline, red on Canvas and canvas on Night, the LocalHeader's current-item mark.
+   An optional label (the section's name) leads the row from 720px. On phones the row scrolls sideways inside itself, its far edge fading. */
+/* The hairline is painted as a background so the current page's underline covers it rather than sitting on top of it. */
+.nu-section-nav--horizontal{container:section-nav-row / inline-size;display:flex;align-items:stretch;gap:var(--space-6);
+  background:linear-gradient(var(--line),var(--line)) left bottom / 100% var(--border-hair) no-repeat}
+.nu-section-nav--horizontal .nu-section-nav__label{flex:none;display:flex;align-items:center;margin:0;color:var(--on-surface-muted)}
+.nu-section-nav--horizontal .nu-section-nav__list{display:flex;flex:1;min-width:0;gap:var(--space-6);border:0;
+  overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.nu-section-nav--horizontal .nu-section-nav__list::-webkit-scrollbar{display:none}
+.nu-section-nav--horizontal .nu-section-nav__list>li{flex:none;border:0;scroll-snap-align:start}
+.nu-section-nav--horizontal .nu-section-nav__link{min-height:var(--space-8);padding:0;white-space:nowrap}
+.nu-section-nav--horizontal .nu-section-nav__link[aria-current="page"]::before{inset:auto 0 0;width:auto;height:var(--border-focus)}
+/* The row's links reach the hairline, so the focus ring draws inside them. */
+.nu-section-nav--horizontal .nu-section-nav__link:focus-visible{outline-offset:calc(var(--border-focus) * -1)}
+@container section-nav-row (max-width:719px){
+  .nu-section-nav--horizontal .nu-section-nav__label{display:none}
+  .nu-section-nav--horizontal .nu-section-nav__list{gap:var(--space-5);padding-inline-end:var(--space-7);mask-image:linear-gradient(to right,var(--on-surface) calc(100% - var(--space-7)),transparent)}
+}
+
+/* ---- components/organisms/space-mosaic.css ---- */
+/* SpaceMosaic: the rooms of a place, shown, not told. A tight square-cornered grid of photographs (2×2, or three across) joined by a narrow
+   seam, with a short caption under each: the space's name and one line. The photographs read as one picture of the place; the captions breathe
+   below them. Phones: one column, the seam stays.
+   Edges: the 2×2 seam sits on the centre line; three across puts seams at the thirds, a gutter short of columns 5 and 9, so open a three-across
+   mosaic with a stacked SectionHeader, not a split one (its column-5 lead would land a near miss on the first seam). */
+.nu-space-mosaic{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5) var(--space-2);min-width:0;margin:0;padding:0;list-style:none}
+.nu-space-mosaic > li{display:grid;min-width:0}
+.nu-space-mosaic .nu-figure{gap:var(--space-3)}
+.nu-space-mosaic__caption{display:grid;gap:var(--space-1);max-width:44ch;padding-right:var(--space-5)}
+.nu-space-mosaic__caption .nu-heading{color:var(--on-surface)}
+.nu-space-mosaic__caption .nu-text{font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-2)}
+@media (min-width:720px){
+  .nu-space-mosaic{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:var(--space-6)}
+}
+@media (min-width:960px){
+  .nu-space-mosaic--3{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
 /* ---- components/organisms/stat-band.css ---- */
 /* StatBand: 22a's research counters (.rc-grid). Three or four Stats set side by side as type, each on the column rule the Stat molecule
    draws, under one hairline that spans the band. The first column drops its rule so the figures start on the content edge.
-   An optional sentence in the left columns says what the figures add up to. Phones stack the stats on top rails. */
+   An optional sentence in the left columns says what the figures add up to. Phones set them two up. */
 .nu-stat-band{display:grid;gap:var(--space-6);min-width:0;margin:0;padding-top:var(--space-7);border-top:var(--border-hair) solid var(--line)}
 .nu-stat-band__lead{max-width:30ch}
 .nu-stat-band__stats{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-6);min-width:0;margin:0;padding:0;list-style:none}
-/* On phones each stat takes the top rail; the band's own hairline already sits over the first. */
-.nu-stat-band__stats>.nu-stat--column{padding-inline-start:0;border-inline-start:0;padding-top:var(--space-5);border-top:var(--border-hair) solid var(--line)}
-.nu-stat-band__stats>.nu-stat--column:first-child{padding-top:0;border-top:0}
+/* Phones (ge-14): two up. Figures step down to h2 size so the widest (10,000+) fits half a phone; the second column keeps the column
+   rail, a second row opens on a top rail. A lone figure ($100K) spans the row. */
+@media not all and (min-width:720px){
+  .nu-stat-band__stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6) var(--space-5)}
+  .nu-stat-band__stats>.nu-stat--column{padding-inline-start:0;border-inline-start:0}
+  .nu-stat-band__stats>.nu-stat--column:nth-child(even){padding-inline-start:var(--space-4);border-inline-start:var(--border-hair) solid var(--line)}
+  .nu-stat-band__stats>.nu-stat--column:nth-child(n+3){padding-top:var(--space-5);border-top:var(--border-hair) solid var(--line)}
+  .nu-stat-band__stats>.nu-stat--column:only-child{grid-column:1 / -1}
+  .nu-stat-band__stats .nu-numeral{font-size:var(--fs-h2)}
+  .nu-stat-band__stats>.nu-stat--column:only-child .nu-numeral{font-size:var(--fs-display-xl)}
+}
 @media (min-width:720px){
   .nu-stat-band__stats{grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
   .nu-stat-band__stats>.nu-stat--column{padding-top:0;border-top:0;padding-inline-start:var(--space-5);border-inline-start:var(--border-hair) solid var(--line)}
@@ -2928,6 +3594,7 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
 .nu-timeline__day-title{padding-top:var(--space-3);border-top:var(--border-rule) solid var(--on-surface)}
 .nu-timeline--agenda .nu-timeline-item__body{gap:var(--space-2)}
 .nu-timeline--agenda .nu-timeline-item__body > .nu-tag{justify-self:start}
+/* Deprecated: __speakers and __featured predate TimelineItem's own --featured and __speakers (use those). Kept until templates/event.html moves over. */
 /* Speakers: name in Medium, role after it; one per line. */
 .nu-timeline__speakers{display:grid;gap:var(--space-1);margin:var(--space-1) 0 0;padding:0;list-style:none;font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-2)}
 .nu-timeline__speakers b{font-weight:var(--fw-medium);color:var(--on-surface)}
@@ -2943,6 +3610,61 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-timeline--agenda .nu-timeline__day-title{grid-column:1 / span 4;position:sticky;top:calc(var(--layout-header) + var(--space-5))}
   .nu-timeline--agenda .nu-timeline__list{grid-column:5 / -1}
 }
+
+/* Status: where a process stands. Dates are prose (Mid-October, depending on the Reading Committee's availability), so they move out of the
+   date column and under the title as meta, led by a status word: Done, Now, Next. The markers still come from aria-current="step" (TimelineItem):
+   filled before it, red on it (ringed in canvas on Night), hollow after it. One rail, no date column at any width. */
+.nu-timeline--status .nu-timeline-item{grid-template-columns:var(--space-5) minmax(0,1fr);grid-template-areas:"rail body"}
+.nu-timeline--status .nu-timeline-item__body > .nu-timeline-item__date{grid-area:auto;padding:0;font-weight:var(--fw-text);line-height:var(--lh-title)}
+.nu-timeline__status{font-weight:var(--fw-medium);color:var(--on-surface)}
+.nu-timeline__status::after{content:"·";margin-inline:var(--space-2);font-weight:var(--fw-text);color:var(--on-surface-muted)}
+.nu-timeline-item:has(~ .nu-timeline-item[aria-current]) .nu-timeline__status{color:var(--on-surface-2)}
+@media (min-width:720px){
+  .nu-timeline--status .nu-timeline-item{grid-template-columns:var(--space-5) minmax(0,1fr);grid-template-areas:"rail body"}
+}
+
+/* ---- components/organisms/venue-header.css ---- */
+/* VenueHeader: the hero of a page about a place people come to (a hub, a center, a campus building). A still photograph of the space under
+   the scene scrim and grain, the venue's mark (or its name as display type) with one statement and the one action that brings people in
+   (Tour the space); then a facts strip on the Night ground the photograph fades into: address, hours and how to get in, on a hairline,
+   in columns 1–4, 5–8 and 9–12 so the strip shares the page's reading edge. Night only. */
+.nu-venue-header{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden;background:var(--surface);color:var(--on-surface)}
+.nu-venue-header__stage{position:relative;display:grid;align-content:end;min-width:0;min-height:calc(var(--space-10) * 4.5);
+  padding:calc(var(--layout-header-compact) + var(--space-7)) var(--layout-edge) var(--space-7)}
+.nu-venue-header__media{position:absolute;inset:0;z-index:-1;overflow:hidden;background:var(--surface-sunken)}
+.nu-venue-header__copy{display:grid;justify-items:start;gap:var(--space-5);min-width:0;max-width:calc(var(--layout-max) * .58)}
+.nu-venue-header__copy .nu-breadcrumb{margin-bottom:calc(var(--space-2) * -1)}
+.nu-venue-header__copy .nu-breadcrumb [aria-current="page"]{color:var(--on-surface-2)}
+.nu-venue-header__copy .nu-heading{max-width:14ch}
+.nu-venue-header__copy .nu-text--lead{max-width:44ch;color:var(--on-surface)}
+.nu-venue-header__copy .nu-button{margin-top:var(--space-2)}
+/* The title as the venue's own mark: a one-colour lockup for Night, sized by height; the h1 holds it so the mark is the page's name. */
+.nu-venue-header__title{margin:0;line-height:0}
+.nu-venue-header__mark{display:block;width:auto;max-width:100%;height:clamp(var(--space-8),calc(var(--fs-display) * 1.25),calc(var(--space-10) + var(--space-5)))}
+
+/* Facts: KeyValue rows on one hairline. */
+.nu-venue-header__facts{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5) var(--layout-gutter);margin:0 var(--layout-edge);padding:var(--space-5) 0 var(--space-8);
+  border-top:var(--border-hair) solid var(--line-strong)}
+.nu-venue-header__facts > .nu-key-value__row{align-content:start}
+.nu-venue-header__facts dt{display:flex;align-items:center;gap:var(--space-2)}
+.nu-venue-header__facts dt .nu-icon{color:var(--on-surface-muted)}
+.nu-venue-header__facts dd{color:var(--on-surface)}
+.nu-venue-header__facts dd span{display:block;color:var(--on-surface-2)}
+
+@media not all and (min-width:960px){
+  /* On phones the copy covers most of the frame: a full shade comes in there only. */
+  .nu-venue-header__stage{min-height:calc(var(--space-10) * 4)}
+}
+@media (min-width:720px){
+  .nu-venue-header__facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:960px){
+  .nu-venue-header__stage{min-height:calc(var(--space-10) * 5);padding-top:calc(var(--layout-header) + var(--space-8));padding-bottom:var(--space-8)}
+  .nu-venue-header__facts{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .nu-venue-header__facts > .nu-key-value__row{grid-column:span 4}
+}
+.nu-venue-header__phone-scrim{display:none}
+@media not all and (min-width:960px){.nu-venue-header__phone-scrim{display:block}}
 
 /* ---- components/organisms/voices.css ---- */
 /* Voices: 22a variant C. A portrait held sticky in the left five columns while large quotes flow past in the right seven; the portrait
@@ -3001,6 +3723,7 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-campaign__band+.nu-campaign__band{padding-top:0}
   .nu-campaign__status{padding-bottom:var(--space-7)}
 }
+.nu-campaign__plan{padding-block:var(--space-7)}
 
 /* ---- components/templates/detail.css ---- */
 /* Detail with section nav: a reading page inside a section. HeroTitle across the page, then the section's pages in a sticky SectionNav (columns 1–3)
@@ -3241,6 +3964,20 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
   .nu-section-hub__band+.nu-section-hub__band,.nu-media-text+.nu-section-hub__band{padding-top:0}
 }
 
+/* Band plan (el-04): Night opener, then Canvas from the Statement down, broken once by the Night overlay feature, closed on Canvas.
+   The Statement opens the Canvas run: the first chapter after it meets it on one seam. */
+.nu-section-hub__statement+.nu-section-hub__band{padding-top:0}
+/* The overlay feature brings its own padding and ground; the Canvas chapter after it takes the full band top again. */
+.nu-media-text--overlay+.nu-section-hub__band{padding-top:var(--space-9)}
+/* The close follows the partners on Canvas: a hairline on the content edge marks the last chapter. */
+.nu-section-hub__close>.nu-action-band__inner{padding-top:var(--space-9);border-top:var(--border-hair) solid var(--line)}
+.nu-section-hub__band+.nu-section-hub__close{padding-top:0}
+.nu-section-hub__plan{padding-block:var(--space-7)}
+@media not all and (min-width:960px){
+  .nu-media-text--overlay+.nu-section-hub__band{padding-top:var(--space-8)}
+  .nu-section-hub__close>.nu-action-band__inner{padding-top:var(--space-8)}
+}
+
 /* ---- components/templates/story.css ---- */
 /* Story: a news story. ArticleHeader on its band (its text already holds columns 1–9), the body in large Prose on columns 1–8 so the measure
    starts under the headline and the right third stays margin, then three related stories and the sitewide ActionBand on Night. */
@@ -3256,36 +3993,50 @@ a.nu-site-identity:hover .nu-site-identity__name,a.nu-site-identity__name:hover{
 [data-mode="dark"] .nu-story>.nu-action-band{border-top:var(--border-hair) solid var(--line)}
 
 /* ---- components/templates/unit-home.css ---- */
-/* Unit home: a unit site's front door in Persuade mode, shown as Experiential Learning. The page opens in the projection room
-   (the GlobalHeader floating over the HeroFilm, the site's own bar, a StoryRow), turns to Canvas to explain itself (SectionHeader,
-   MediaText, StatBand, Voices) and closes in the dark again (Closer, LocalFooter, GlobalFooter). Page layout only: band order, the
-   band padding the content-only organisms need, and the seams where two bands on one ground meet. */
+/* Unit home: a unit site's front door in Persuade mode, shown as Experiential Learning. The band plan (el-04): Night opens it (the bars
+   over a display-size hero), Canvas states the unit in one line, one Night feature shows its six differentiators, and Canvas carries the
+   stories, figures, voices and the close. Two Night bands at most; the footers are chrome. Page layout only: band order, the band
+   padding the content-only organisms need, the seams where two bands on one ground meet, and the differentiators grid. */
 .nu-unit-home{background:var(--surface);color:var(--on-surface)}
 
 /* The header floats over the film: the pair is one positioned block, and the film's own top padding already clears the bar. */
 .nu-unit-home__top{position:relative}
 
-/* A band gives a content-only organism (StoryRow, SectionHeader, StatBand) the layout edge and the section rhythm. */
+/* A band gives a content-only organism (Statement, SectionHeader, StoryRow, StatBand) the layout edge and the section rhythm. */
 .nu-unit-home__band{padding:var(--space-9) var(--layout-edge);background:var(--surface);color:var(--on-surface)}
 
-/* The Night run: the StoryRow continues the hero's room under the site bar, so it starts closer to the bar than a new chapter would. */
-.nu-unit-home__stories{padding-block:var(--space-7) var(--space-8)}
+/* The feature: six claims as captioned square photographs on Night (el-08). Nothing links, so nothing is a card: a picture, a title,
+   a sentence, on the 12-column grid three to a row, so the middle column's captions start on column 5 and the right on column 9. */
+.nu-unit-home__claims{display:grid;gap:var(--space-7)}
+.nu-unit-home__claims-grid{display:grid;grid-auto-flow:column;grid-auto-columns:78%;gap:var(--space-5);margin:0 calc(var(--layout-edge) * -1);
+  padding:0 var(--layout-edge) var(--space-2);list-style:none;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;
+  scroll-padding-inline:var(--layout-edge);scrollbar-width:none}
+.nu-unit-home__claim{display:grid;gap:var(--space-3);align-content:start;min-width:0;scroll-snap-align:start}
+.nu-unit-home__claim>.nu-image{margin-bottom:var(--space-2)}
+.nu-unit-home__claim>.nu-text{max-width:36ch;color:var(--on-surface-2)}
+@media (min-width:720px){
+  .nu-unit-home__claims-grid{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-8) var(--layout-gutter);margin:0;padding:0;overflow:visible}
+}
+@media (min-width:960px){
+  .nu-unit-home__claims{gap:var(--space-8)}
+  .nu-unit-home__claims-grid{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:var(--space-8)}
+}
 
-/* The Canvas chapter. The SectionHeader opens it and the MediaText belongs to it: the header keeps no bottom padding and the
-   media pulls up to a heading-to-content gap instead of a band-to-band one. */
-.nu-unit-home__intro{padding-bottom:0}
-.nu-unit-home__intro+.nu-media-text{padding-top:var(--space-7)}
-/* The figures follow on the same ground: no second band top, the StatBand's own hairline is the chapter rail. */
-.nu-unit-home__figures{padding-top:0}
-/* The Voices band brings its own block padding; on one ground the seam is one rhythm, not two. */
+/* Canvas from the stories down: one ground, so each seam is one rhythm, not two band tops. The StatBand's own hairline is its rail. */
+.nu-unit-home__stories+.nu-unit-home__figures{padding-top:0}
 .nu-unit-home__figures+.nu-voices{padding-top:var(--space-6)}
+/* The close follows the Voices on Canvas: a hairline on the content edge marks the last chapter instead of a change of ground. */
+.nu-unit-home__close{padding-top:var(--space-9)}
+.nu-unit-home__close>.nu-action-band__inner{padding-top:var(--space-9);border-top:var(--border-hair) solid var(--line)}
+.nu-voices+.nu-unit-home__close{padding-top:0}
+
+/* The band plan table shown above the specimen. */
+.nu-unit-home__plan{padding-block:var(--space-7)}
 
 @media not all and (min-width:960px){
   .nu-unit-home__band{padding-block:var(--space-8)}
-  .nu-unit-home__stories{padding-top:var(--space-7)}
-  .nu-unit-home__intro{padding-bottom:0}
-  .nu-unit-home__intro+.nu-media-text{padding-top:var(--space-6)}
-  .nu-unit-home__figures{padding-top:0}
+  .nu-unit-home__stories+.nu-unit-home__figures{padding-top:0}
+  .nu-unit-home__close>.nu-action-band__inner{padding-top:var(--space-8)}
 }
 
 /* ---- css/docs.css ---- */
