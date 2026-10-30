@@ -10,7 +10,7 @@ function setOpen(button, target, state) {
 }
 
 document.addEventListener('click', (event) => {
-  const button = event.target.closest('button[aria-controls]');
+  const button = event.target.closest('button[aria-controls]:not([data-drawer-open])');
   const close = event.target.closest('[data-close]');
   if (close) {
     for (const b of open) if (document.getElementById(b.getAttribute('aria-controls'))?.contains(close)) { setOpen(b, document.getElementById(b.getAttribute('aria-controls')), false); b.focus(); }
@@ -35,18 +35,27 @@ document.addEventListener('keydown', (event) => {
   for (const b of [...open]) { setOpen(b, document.getElementById(b.getAttribute('aria-controls')), false); b.focus(); }
 });
 
-// Finder: chips filter the cards (AND across facets, OR within one); counts and the empty state follow.
+// Finder: chips and checkboxes filter the cards (AND across facets, OR within one); counts, paging and the phone drawer follow.
 for (const panel of document.querySelectorAll('[data-finder]')) {
   const scope = panel.closest('section');
   const items = [...scope.querySelectorAll('[data-finder-items] > li')];
   const count = scope.querySelector('[data-finder-count]');
   const empty = scope.querySelector('[data-finder-empty]');
+  const badge = scope.querySelector('[data-finder-badge]');
+  const total = scope.querySelector('[data-finder-total]');
+  const drawer = scope.querySelector('[data-drawer]');
+  const opener = scope.querySelector('[data-drawer-open]');
   const more = scope.querySelector('[data-finder-more]');
   const page = more ? Number(more.dataset.page) : Infinity;
   let limit = page;
-  const apply = () => {
+  const active = () => {
     const on = {};
     for (const c of panel.querySelectorAll('.nu-chip[aria-pressed="true"]')) (on[c.dataset.filter] ||= []).push(c.dataset.value);
+    for (const c of panel.querySelectorAll('input[data-filter]:checked')) (on[c.dataset.filter] ||= []).push(c.value);
+    return on;
+  };
+  const apply = () => {
+    const on = active();
     let shown = 0;
     for (const li of items) {
       const terms = JSON.parse(li.dataset.terms);
@@ -54,24 +63,47 @@ for (const panel of document.querySelectorAll('[data-finder]')) {
       shown += ok;
       li.hidden = !ok || shown > limit;
     }
-    if (more) more.hidden = shown <= limit;
+    const n = Object.values(on).flat().length;
     count.textContent = `${shown} of ${items.length} ${count.dataset.noun || 'results'}`;
+    total.textContent = shown;
+    badge.textContent = n;
+    badge.hidden = n === 0;
     empty.hidden = shown > 0;
+    if (more) more.hidden = shown <= limit;
   };
   panel.addEventListener('click', (event) => {
     const chip = event.target.closest('.nu-chip');
+    const all = event.target.closest('[data-show-all]');
+    if (all) {
+      const open = all.getAttribute('aria-expanded') !== 'true';
+      all.setAttribute('aria-expanded', String(open));
+      for (const o of all.parentElement.querySelectorAll('[data-more]')) o.hidden = !open;
+      return;
+    }
     if (!chip) return;
     chip.setAttribute('aria-pressed', String(chip.getAttribute('aria-pressed') !== 'true'));
     limit = page;
     apply();
   });
-  more?.addEventListener('click', () => { limit += page; apply(); });
-  apply();
+  panel.addEventListener('change', () => { limit = page; apply(); });
   panel.addEventListener('reset', () => {
-    limit = page;
     for (const c of panel.querySelectorAll('.nu-chip')) c.setAttribute('aria-pressed', 'false');
+    limit = page;
     setTimeout(apply);
   });
+  more?.addEventListener('click', () => { limit += page; apply(); });
+  // Phone drawer: the same form, opened over the page below 960px.
+  const close = () => { drawer.removeAttribute('data-open'); opener.setAttribute('aria-expanded', 'false'); document.documentElement.classList.remove('st-locked'); opener.focus(); };
+  opener.addEventListener('click', (event) => {
+    event.stopPropagation();
+    drawer.setAttribute('data-open', '');
+    opener.setAttribute('aria-expanded', 'true');
+    document.documentElement.classList.add('st-locked');
+    panel.querySelector('button, input')?.focus();
+  });
+  scope.querySelector('[data-drawer-close]').addEventListener('click', close);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && drawer.hasAttribute('data-open')) close(); });
+  apply();
 }
 
 // Staging forms never submit: show the notice instead.
@@ -82,4 +114,40 @@ for (const form of document.querySelectorAll('[data-staging-form]')) {
     sent.hidden = false;
     sent.scrollIntoView({ block: 'center' });
   });
+}
+
+// Film bands: play muted unless the visitor prefers reduced motion; the toggle pauses and resumes.
+for (const video of document.querySelectorAll('[data-film]')) {
+  const toggle = video.closest('section').querySelector('[data-film-toggle]');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const set = (paused) => {
+    toggle.setAttribute('aria-pressed', String(paused));
+    toggle.setAttribute('aria-label', paused ? 'Play the film' : 'Pause the film');
+  };
+  if (still) set(true); else video.play().then(() => set(false)).catch(() => set(true));
+  toggle.addEventListener('click', () => {
+    if (video.paused) { video.play(); set(false); } else { video.pause(); set(true); }
+  });
+}
+
+// Long documents: mark the section being read in every table of contents on the page.
+const tocs = document.querySelectorAll('[data-toc]');
+if (tocs.length) {
+  const links = [...tocs].flatMap((t) => [...t.querySelectorAll('a[href^="#"]')]);
+  const heads = [...new Set(links.map((a) => document.getElementById(a.hash.slice(1))))].filter(Boolean);
+  const mark = (id) => {
+    for (const a of links) {
+      if (a.hash === `#${id}`) a.setAttribute('aria-current', 'location');
+      else a.removeAttribute('aria-current');
+    }
+    const cur = document.querySelector('[data-toc-current]');
+    const hit = links.find((a) => a.hash === `#${id}`);
+    if (cur && hit) cur.textContent = hit.textContent;
+  };
+  const seen = new IntersectionObserver((entries) => {
+    const top = entries.filter((x) => x.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+    if (top) mark(top.target.id);
+  }, { rootMargin: '0px 0px -70% 0px' });
+  heads.forEach((h) => seen.observe(h));
+  for (const d of document.querySelectorAll('[data-toc] details')) d.addEventListener('click', (ev) => { if (ev.target.closest('a')) d.open = false; });
 }

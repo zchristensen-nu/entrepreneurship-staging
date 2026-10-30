@@ -14,8 +14,8 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path.home() / "Projects/nu-site-kit"))
-from kit import (Site, band, contact_items, e, hero_page, hero_title, href, i,  # noqa: E402
-                 link_row, not_found, section_header)
+from kit import (Site, band, breadcrumb, contact_items, document, e, facet_checks, facet_chips, finder, hero_page, hero_title,  # noqa: E402
+                 href, i, link_row, not_found, section_header)
 
 ROOT = Path(__file__).resolve().parents[1]
 C = json.loads((ROOT / "build/content.json").read_text())
@@ -162,30 +162,6 @@ site = Site(ROOT, UNIT, "entrepreneurship-staging", "entrepreneurship.northeaste
 
 
 # ---------- finder (programs, ventures) ----------
-def facet(key, label, values, records, getter):
-    chips = "".join(f'<button class="nu-chip" type="button" aria-pressed="false" data-filter="{key}" data-value="{e(v)}">{e(v)} <span class="nu-chip-group__count">{sum(v in getter(r) for r in records)}</span></button>' for v in values)
-    return f'''<div class="nu-filter-panel__facet"><div class="nu-chip-group" role="group" aria-labelledby="fp-{key}">
-  <div class="nu-chip-group__head"><p class="nu-chip-group__label" id="fp-{key}">{e(label)}</p></div>
-  <div class="nu-chip-group__chips">{chips}</div></div></div>'''
-
-
-def finder(title, noun, facets, items_html, list_cls="st-program-grid", page=0):
-    return f'''<section class="st-band st-finder" aria-labelledby="finder-h">
-  <div class="st-finder__layout">
-    <form class="nu-filter-panel nu-filter-panel--sidebar" aria-labelledby="finder-h" data-finder>
-      <div class="nu-filter-panel__head"><h2 class="nu-heading nu-heading--h4" id="finder-h">{e(title)}</h2><button class="nu-filter-panel__clear" type="reset">Clear all</button></div>
-      {facets}
-    </form>
-    <div class="st-finder__results">
-      <p class="nu-text nu-text--meta" aria-live="polite" data-finder-count data-noun="{noun}">{items_html.count("<li data-terms")} {noun}</p>
-      <ul class="{list_cls}" role="list" data-finder-items>{items_html}</ul>
-      <p class="nu-text" data-finder-empty hidden>Nothing matches those filters. Clear one to see more.</p>
-      {f'<div class="st-actions"><button class="nu-button nu-button--outline" type="button" data-finder-more data-page="{page}">Show more {noun}</button></div>' if page else ""}
-    </div>
-  </div>
-</section>'''
-
-
 SAME = {"Accelerators": "Accelerator", "Investors": "Investor"}  # duplicated terms on the live site
 
 
@@ -210,12 +186,14 @@ def offerings():
     <h3 class="nu-heading nu-heading--h4 nu-program-card__title"><a class="nu-program-card__link" href="{e(p["external_link"])}">{e(p["title"])}</a></h3>
     <p class="nu-text nu-text--small">{e(clean(p["description"]))}</p>
     <div class="nu-program-card__foot">
-      <div class="nu-program-card__tags">{"".join(f'<span class="nu-tag">{e(c)}</span>' for c in p["categories"])}</div>
+      <div class="nu-program-card__tags">{"".join(f'<span class="nu-tag">{e(c)}</span>' for c in p["categories"][:1])}</div>
       <span class="nu-arrow-link nu-arrow-link--sm nu-arrow-link--external nu-program-card__cue" aria-hidden="true">Visit {i("external")}</span>
     </div>
   </div>
 </article></li>'''
-    facets = "".join(facet(k, l, sorted({t for p in progs for t in p[k]}), progs, lambda r, k=k: r[k]) for k, l in keys)
+    def counter(k):
+        return lambda v: sum(v in p[k] for p in progs)
+    facets = "".join((facet_chips if k == "categories" else facet_checks)(k, l, sorted({t for p in progs for t in p[k]}), counter(k)) for k, l in keys)
     body = hero_title(texts(items, "h1")[0], texts(items, "p")[-1], [(UNIT, "")]) + finder("Filter programs", "programs", facets, cards)
     site.page("offerings", "Programs and offerings", texts(items, "p")[-1], body, "offerings/")
 
@@ -242,7 +220,7 @@ def portfolio():
     hero = hero_page(texts(items, "h1")[0], items[0]["local"] and asset(items[0]["local"]), texts(items, "p")[-1], [(UNIT, "")])
     hero = hero.replace(f'src="{{{{base}}}}assets/img/{asset(items[0]["local"])}"', f'src="{{{{base}}}}assets/img/{asset(items[0]["local"])}"')
     site.page("ventures/portfolio", "Venture portfolio", texts(items, "p")[-1],
-              finder("Filter by industry", "ventures", facet("industries", "Industry", inds, vs, lambda r: r.get("industries") or []), rows, "st-ventures", page=24),
+              finder("Filter by industry", "ventures", facet_checks("industries", "Industry", inds, lambda v: sum(v in (r.get("industries") or []) for r in vs)), rows, "st-ventures", page=24),
               "ventures/portfolio/", hero)
 
 
@@ -417,7 +395,7 @@ def open_house():
 </section>'''
     rows = ""
     for t in hack:
-        m = re.match(r"^(Nov \d+(?:–\d+)?)([A-Z0-9 .]+?)([A-Z][a-z].*)$", t)
+        m = re.match(r"^(Nov \d+(?:–\d+)?)([A-Z0-9 .]+?)((?:[A-Z][a-z]|A [a-z]).*)$", t)  # the description may start with the word "A"
         d, label, desc = (m.group(1), m.group(2).strip().capitalize(), m.group(3)) if m else ("", "", t)
         label = label.replace("300 open house", "300 Open House").replace("Demo day 1.0", "Demo Day 1.0")
         rows += f'<li class="nu-timeline-item"><span class="nu-timeline-item__date">{e(d)}</span><span class="nu-timeline-item__rail" aria-hidden="true"></span><div class="nu-timeline-item__body"><h4 class="nu-heading nu-heading--h4">{e(label)}</h4><p class="nu-text">{e(desc)}</p></div></li>'
@@ -462,17 +440,31 @@ NU = "ventures/next-up-2026/"
 def next_up():
     h = sec("ventures__next-up-2026", 0)
     hp = texts(h, "p")
-    # The live hero image is the Next Up wordmark (text in an image): it sits beside the title, not behind it.
-    hero = ""
-    lead_band = hero_title("Your first venture. Before your first semester.", hp[1], [(UNIT, "")], figure=pic(h[0]["local"], "Next Up Founders Prize", "natural"), here="Next Up Founders Prize")
-    notice = f'''<div class="nu-notice nu-notice--info">{i("info").replace('class="nu-icon"', 'class="nu-icon nu-notice__icon"')}
-  <div class="nu-notice__body"><p class="nu-notice__title">Applications for 2026 are closed</p><p class="nu-text nu-text--small">{e(hp[0])}</p>
-  <a class="nu-arrow-link nu-arrow-link--sm" href="#h-dates">What happens next {i("arrow")}</a></div></div>'''
     st = texts(sec("ventures__next-up-2026", 1), "p")
-    facts = key_values([(st[1], st[2]), (st[3], st[4].replace("\n", " ")), (st[5], (st[6] + " " + st[7]).replace("\n", " "))], "nu-key-value--inline")
-    prize = f'''<div class="st-prize"><p class="nu-text nu-text--meta">Up to</p><p class="nu-numeral nu-numeral--xl">$100K</p><p class="nu-text nu-text--lead">{e(st[0])}</p></div>'''
+    # Campaign template: Night opens with the campaign's own lockup, headline, status, headline figure and facts; the status Notice closes the opening.
+    lead = hp[1].split(". ")[0] + "."
+    facts = key_values([(st[1], st[2]), (st[3], st[4].replace("\n", " ")), (st[5], (st[6] + " " + st[7]).replace("\n", " "))], "nu-key-value--inline nu-hero-title__facts")
+    opener = f'''<header class="nu-hero-title st-campaign-hero" data-mode="dark">
+  <div class="nu-hero-title__main">
+    {breadcrumb([(UNIT, "")], "Next Up Founders Prize")}
+    <img class="st-campaign-mark" src="{{{{base}}}}assets/img/{asset(h[0]["local"])}" alt="Next Up Founders Prize">
+    <h1 class="nu-heading nu-heading--h1">Your first venture. Before your first semester.</h1>
+    <p class="nu-text nu-text--lead">{e(lead)}</p>
+    <ul class="nu-meta-list nu-meta-list--inline"><li><span class="nu-tag nu-tag--closed">Applications closed</span></li><li>Finals November 17–20</li></ul>
+    <p class="st-campaign-figure"><span class="nu-text nu-text--meta">Up to</span> <span class="nu-numeral nu-numeral--md">$100K</span> <span class="nu-text">{e(st[0])}</span></p>
+  </div>
+  {facts}
+  <hr class="nu-rule nu-hero-title__rule">
+</header>
+<div class="nu-campaign__status" data-mode="dark">
+  <div class="nu-notice nu-notice--info" role="status">{i("info").replace('class="nu-icon"', 'class="nu-icon nu-notice__icon"')}<div class="nu-notice__body"><p class="nu-notice__title">Applications for 2026 closed on September 30</p><p class="nu-text nu-text--small">{e(hp[0])}</p><a class="nu-arrow-link nu-arrow-link--sm" href="#h-dates">What happens next {i("arrow")}</a></div></div>
+</div>'''
+    about = f'''<section class="nu-campaign__band" aria-labelledby="h-about"><div class="nu-campaign__index">
+  <div class="nu-campaign__index-head"><h2 class="nu-heading nu-heading--h2" id="h-about">About the prize</h2></div>
+  <div class="nu-prose">{"".join(f"<p>{e(x.strip())}.</p>" for x in hp[1].split(". ")[1:] if x.strip()).replace("..", ".")}</div>
+</div></section>'''
     net = "".join(f'<div class="nu-stat nu-stat--column"><p class="nu-numeral nu-numeral--md">{e(v)}</p><p class="nu-stat__text">{e(l)}</p></div>' for v, l in zip(st[9::2], st[10::2]))
-    body = lead_band + band(notice, "st-band--tight") + band(f'<div class="st-prize-row">{prize}{facts}</div>')
+    body = opener + about
     body += band(section_header(st[8], hid="h-net", split=False) + f'<div class="nu-stat-band"><div class="nu-stat-band__stats">{net}</div></div>', "st-band--sunken")
     el = sec("ventures__next-up-2026", 2)
     ep = texts(el, "p")
@@ -511,37 +503,48 @@ def next_up():
   <div class="nu-accordion__head"><h2 class="nu-heading nu-heading--h2" id="h-faq">FAQ</h2></div>
   <div class="nu-accordion__groups">{gh}</div>
 </section><div class="st-actions">{arrow(rules["text"], rules["href"])}{arrow("Application guide", NU + "application-guide/")}</div>''')
-    site.page("ventures/next-up-2026", "Next Up Founders Prize 2026", hp[1][:155], body, NU, hero)
+    site.page("ventures/next-up-2026", "Next Up Founders Prize 2026", hp[1][:155], f'<div class="nu-campaign">{body}</div>', NU)
+
+
+def sentence(t):
+    """Title Case headings to sentence case, keeping acronyms."""
+    words = t.split()
+    return " ".join(w if (n == 0 or (w.isupper() and len(w) > 1)) else w.lower() for n, w in enumerate(words))
 
 
 def rules():
     top = sec("ventures__next-up-2026__program-parameters-rules", 0)
     ps = texts(sec("ventures__next-up-2026__program-parameters-rules", 1), "p")
-    prose = ""
+    prose, toc = "", []
     for p in ps:
-        if re.match(r"^\d+\.?\s", p) and len(p) < 70:
-            prose += f"<h2>{e(p)}</h2>"
+        m = re.match(r"^(\d+)\.?\s+(.*)$", p)
+        if m and len(p) < 70:
+            aid = f"clause-{m.group(1)}"
+            toc.append((aid, m.group(1) + ".", m.group(2)))
+            prose += f'<h2 id="{aid}"><span class="st-clause-num">{m.group(1)}.</span> {e(m.group(2))}</h2>'
         elif re.match(r"^[a-z]\.\s", p) or re.match(r"^i\.", p):
             prose += f'<p class="st-clause">{e(p).replace(chr(10), "<br>")}</p>'
         else:
             prose += f"<p>{e(p).replace(chr(10), '<br>')}</p>"
     tp = texts(top, "p")
-    body = hero_title(tp[0], tp[1], [(UNIT, ""), ("Next Up Founders Prize", NU)]) + band(f'<div class="st-policy"><div class="nu-prose">{prose}</div></div>')
+    body = hero_title("Official rules", tp[1], [(UNIT, ""), ("Next Up Founders Prize", NU)]) + document(prose, toc)
     site.page("ventures/next-up-2026/program-parameters-rules", "Official rules · Next Up Founders Prize", tp[1], body, NU)
 
 
 def guide():
     s = sec("ventures__next-up-2026__application-guide", 1)
-    prose, in_list = "", False
+    prose, in_list, toc = "", False, []
     for c in s:
         k, t = c["kind"], c.get("text", "")
         if k != "li" and in_list:
             prose += "</ul>"
             in_list = False
         if k == "h3":
-            prose += f"<h2>{e(t)}</h2>"
+            aid = re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
+            toc.append((aid, "", sentence(t)))
+            prose += f'<h2 id="{aid}">{e(sentence(t))}</h2>'
         elif k == "h4":
-            prose += f"<h3>{e(t)}</h3>"
+            prose += f"<h3>{e(sentence(t))}</h3>"
         elif k == "li":
             if not in_list:
                 prose += "<ul>"
@@ -553,7 +556,7 @@ def guide():
                     prose += f"<p>{e(para.strip())}</p>"
     if in_list:
         prose += "</ul>"
-    body = hero_title("Application guide", "Next Up Founders Prize", [(UNIT, ""), ("Next Up Founders Prize", NU)]) + band(f'<div class="st-policy"><div class="nu-prose">{prose}</div></div>')
+    body = hero_title("Application guide", "Next Up Founders Prize", [(UNIT, ""), ("Next Up Founders Prize", NU)]) + document(prose, toc)
     site.page("ventures/next-up-2026/application-guide", "Application guide · Next Up Founders Prize", "How to apply to the Next Up Founders Prize.", body, NU)
 
 

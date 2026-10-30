@@ -71,7 +71,7 @@ html:has(.nu-mobile-menu:not([hidden])){overflow:hidden}
 .st-finder__results{display:grid;gap:var(--space-5);align-content:start;min-width:0}
 @media (min-width:960px){
   .st-finder__layout{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}
-  .st-finder__layout>.nu-filter-panel{grid-column:1 / span 3;position:sticky;top:var(--space-5);align-self:start}
+  .st-finder__layout>.st-finder__drawer{grid-column:1 / span 3}
   .st-finder__results{grid-column:5 / -1}
   .st-finder .st-program-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -138,3 +138,32 @@ html:has(.nu-mobile-menu:not([hidden])){overflow:hidden}
 .st-clause{padding-inline-start:var(--space-5)}
 /* Event archive. */
 .st-events{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(var(--space-10) * 2.75)),1fr));gap:var(--space-6) var(--layout-gutter);margin:0;padding:0;list-style:none}
+
+/* Bullets under a section heading, on the reading edge. */
+.st-bullets{display:grid;gap:var(--space-3);margin:0;padding-inline-start:var(--space-5);max-width:var(--layout-prose);color:var(--on-surface-2)}
+/* Film band: full-bleed video on Night, copy over a scrim, a pause control (autoplaying video must pause). */
+.st-film{position:relative;display:grid;align-items:end;min-height:min(80vh,calc(var(--space-10) * 6));padding:var(--space-9) var(--layout-edge);overflow:hidden;color:var(--on-surface);background:var(--surface);isolation:isolate}
+.st-film__video{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}
+.st-film>.nu-scrim{z-index:-1}
+.st-film__copy{display:grid;gap:var(--space-3);max-width:18ch}
+.st-film__control{position:absolute;right:var(--layout-edge);bottom:var(--space-7)}
+
+/* Finder: results bar with the count (and, below 960px, the Filters button); the panel becomes a full-screen drawer. */
+.st-finder__bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);min-height:var(--layout-target)}
+.st-finder__foot{display:none}
+html.st-locked{overflow:hidden}
+@media (min-width:960px){.st-finder__open{display:none}}
+@media (max-width:959px){
+  .st-finder__drawer{display:none}
+  .st-finder__drawer[data-open]{display:block;position:fixed;inset:0;z-index:var(--z-modal);overflow-y:auto;padding:var(--space-6) var(--layout-edge) 0;background:var(--surface-raised)}
+  .st-finder__drawer .nu-filter-panel--sidebar{position:static;max-height:none;overflow:visible;padding:0}
+  .st-finder__drawer .st-finder__foot{display:flex;bottom:0;margin-inline:calc(var(--layout-edge) * -1);margin-bottom:0}
+}
+/* Long documents: the phone disclosure sits under the hero, pinned while reading. */
+.st-doc__disclosure{position:sticky;top:0;z-index:var(--z-sticky);margin:var(--space-5) var(--layout-edge) 0}
+.nu-prose [id]{scroll-margin-top:var(--space-9)}
+/* Campaign opener: the campaign's own lockup over the headline, and its headline figure inline. */
+.st-campaign-hero{padding:var(--space-8) var(--layout-edge) 0;background:var(--surface);color:var(--on-surface)}
+.st-campaign-mark{display:block;width:auto;height:var(--space-9);max-width:100%;object-fit:contain;object-position:left center}
+.st-campaign-figure{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-3);margin:0}
+.st-campaign-figure .nu-numeral{display:inline}
