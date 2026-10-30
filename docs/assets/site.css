@@ -1,0 +1,140 @@
+/* Staging sites: page glue only. Every component is the design system's (nu-ds.css); this file places them on the page,
+   with tokens for every value (design-system/tokens). */
+body{background:var(--surface);color:var(--on-surface)}
+.st-skip{position:absolute;top:var(--space-2);left:var(--space-2);z-index:var(--z-toast);translate:0 calc(-100% - var(--space-4))}
+.st-skip:focus{translate:0 0}
+.st-staging{padding:var(--space-2) var(--layout-edge);font-size:var(--fs-small);line-height:var(--lh-title);color:var(--on-surface-2);background:var(--surface-sunken);border-bottom:var(--border-hair) solid var(--line)}
+
+/* The header floats over the home hero; elsewhere it sits on the page. */
+.st-top{position:relative}
+.st-top>.nu-header-stack:not(.nu-header-stack--over-media){position:sticky;top:0}
+/* Over film the copy clears the strip and the bar (48 + 72px). */
+.st-top--over .nu-hero-page__copy{padding-top:calc(var(--space-7) + var(--layout-header) + var(--space-8))}
+.st-hero .nu-heading--h1{max-width:22ch}
+
+/* Bands: the page's vertical rhythm. */
+.st-band{padding:var(--space-9) var(--layout-edge)}
+.st-band--tight{padding-block:var(--space-7)}
+.st-band--first{padding-top:var(--space-7)}
+/* MediaText is a band itself (it owns the layout edge); these only set its rhythm on these pages. */
+.st-tight{padding-block:var(--space-7)}
+.st-tight:first-of-type{padding-top:var(--space-9)}
+.st-after-list{border-top:var(--border-hair) solid var(--line)}
+.st-about{padding-block:var(--space-9)}
+.st-band--sunken{background:var(--surface-sunken)}
+.st-hero-title{padding:var(--space-8) var(--layout-edge) 0}
+.st-rows{display:grid;margin-top:var(--space-7);border-top:var(--border-hair) solid var(--line)}
+.st-tabs{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-5)}
+.st-tabs .nu-chip{text-decoration:none}
+
+/* Contact: the collage sits beside the page title from 960px; departments run full width below. */
+.st-contact__blocks{display:grid;gap:var(--space-7)}
+.st-contact-inline,.st-contact-stack{display:grid;gap:var(--space-3);margin-block:var(--space-4)}
+.st-hero-figure{margin:var(--space-6) 0 0;max-width:calc(var(--space-10) * 3)}
+@media (min-width:960px){
+  .st-hero-title--figure{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);align-items:end}
+  .st-hero-title--figure .nu-hero-title__main{grid-column:1 / span 7}
+  .st-hero-title--figure .st-hero-figure{grid-column:9 / -1;margin:0;max-width:none}
+  .st-hero-title--figure .nu-hero-title__rule{grid-column:1 / -1}
+}
+.st-404{max-width:calc(var(--layout-prose) + var(--layout-edge) * 2)}
+.st-404 .nu-text--lead{margin-top:var(--space-4)}
+
+/* Explore Northeastern opens the MobileMenu sheet over the page; the unit menu is a small list under its button. */
+.st-sheet .nu-mobile-menu{position:fixed;inset:0;z-index:var(--z-modal)}
+.st-unit-menu{position:relative}
+.st-unit-menu__list{inset-inline:auto 0}
+html:has(.nu-mobile-menu:not([hidden])){overflow:hidden}
+
+/* Team/Leadership switch: links styled as Chips; the current page takes the Chip's selected state. */
+.st-tabs .nu-chip[aria-current]{color:var(--on-action);background:var(--action);border-color:var(--action)}
+/* 54 people: five across on wide screens (224px minimum card), two on phones. */
+.nu-card-grid--people .nu-card-grid__items{grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(var(--space-10) * 1.75)),1fr))}
+@media (max-width:719px){.nu-card-grid--people .nu-card-grid__items{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Section rhythm for generic content bands. */
+.st-band--tight{padding-block:var(--space-7)}
+.st-band--flush{padding-block:var(--space-7) var(--space-9)}
+.st-band--statement .nu-section-header__body .nu-text--lead{font-size:var(--fs-h3);font-weight:var(--fw-title);line-height:var(--lh-title);color:var(--on-surface);max-width:30ch}
+.st-band .nu-section-header+*{margin-top:var(--space-7)}
+.st-more{display:grid;gap:var(--space-4);margin-top:var(--space-5);max-width:var(--layout-prose)}
+.st-actions{display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-5);align-items:center;margin-top:var(--space-7)}
+.st-list ul{margin:0}
+.st-tight.nu-media-text{padding-block:var(--space-7)}
+/* Quick links: InPageNav as a band between the hero and the first section. */
+.st-quick{position:static}
+/* Program cards and the finder. */
+.st-program-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(var(--space-10) * 2.25)),1fr));gap:var(--space-7) var(--layout-gutter);margin:0;padding:0;list-style:none}
+.st-program-grid>li{display:grid}
+.st-program-grid>li[hidden]{display:none}
+.st-finder__layout{display:grid;gap:var(--space-7)}
+.st-finder__results{display:grid;gap:var(--space-5);align-content:start;min-width:0}
+@media (min-width:960px){
+  .st-finder__layout{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}
+  .st-finder__layout>.nu-filter-panel{grid-column:1 / span 3;position:sticky;top:var(--space-5);align-self:start}
+  .st-finder__results{grid-column:5 / -1}
+  .st-finder .st-program-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+.st-logos{margin-top:var(--space-7)}
+/* Short claims as hairline rows on the reading edge. */
+.st-points{display:grid;margin:0;padding:0;list-style:none;border-top:var(--border-hair) solid var(--line)}
+.st-points>li{padding-block:var(--space-5);border-bottom:var(--border-hair) solid var(--line)}
+@media (min-width:960px){.st-points{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}.st-points>li{grid-column:5 / -1}}
+/* A cut-out figure over the hero ground (Experiential Learning home). */
+.st-hero__figure{position:absolute;right:0;bottom:0;z-index:0;height:100%;width:auto;max-width:70%;object-fit:contain;object-position:right bottom}
+/* An opening statement: the page's first paragraph set large across eight columns. */
+.st-statement{margin:0;max-width:30ch;font-size:var(--fs-h2);font-weight:var(--fw-heading);line-height:var(--lh-heading);letter-spacing:var(--tracking-heading);text-wrap:pretty}
+/* Components that set display (Notice, list items) must still honour hidden. */
+[hidden]{display:none!important}
+
+/* ---- Entrepreneurship patterns ---- */
+.st-statement--body{font-size:var(--fs-h3);font-weight:var(--fw-title);line-height:var(--lh-title);max-width:40ch}
+.st-hero-meta{margin-block:var(--space-2)}
+.st-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(var(--space-10) * 2)),1fr));gap:var(--space-7) var(--layout-gutter);margin:0;padding:0;list-style:none}
+.st-values>li{display:grid;gap:var(--space-3);align-content:start;padding-top:var(--space-4);border-top:var(--border-rule) solid var(--line-strong)}
+.st-link-row--static{cursor:default}
+.st-accordion{display:grid;margin-top:var(--space-5)}
+.st-fine{color:var(--on-surface-muted);max-width:var(--layout-prose)}
+/* Founder cards keep their story on the card. */
+.st-founder .nu-person-card__body{display:grid;gap:var(--space-3);justify-items:start}
+/* Awards: white marks on Night. */
+.st-awards{background:var(--surface);color:var(--on-surface)}
+.st-awards__list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(var(--space-10) * 2.25)),1fr));gap:var(--space-7) var(--layout-gutter);margin:var(--space-7) 0 0;padding:0;list-style:none}
+.st-award{display:grid;gap:var(--space-2);align-content:start;padding-top:var(--space-5);border-top:var(--border-hair) solid var(--line)}
+.st-award__mark{height:var(--space-8);width:auto;max-width:100%;object-fit:contain;object-position:left center;margin-bottom:var(--space-3)}
+/* Venture portfolio rows: mark, name and description, industry. */
+.st-ventures{display:grid;margin:0;padding:0;list-style:none;border-top:var(--border-hair) solid var(--line)}
+.st-ventures>li[hidden]{display:none}
+.st-venture{position:relative;display:grid;grid-template-columns:var(--space-9) minmax(0,1fr);gap:var(--space-3) var(--space-5);align-items:start;padding-block:var(--space-5);border-bottom:var(--border-hair) solid var(--line)}
+.st-venture__mark{display:grid;place-items:center;width:var(--space-9);aspect-ratio:1;background:var(--surface-raised);border:var(--border-hair) solid var(--line)}
+.st-venture__mark img{max-width:80%;max-height:80%;width:auto;height:auto;object-fit:contain}
+.st-venture__initial{font-size:var(--fs-h3);font-weight:var(--fw-title);color:var(--on-surface-muted)}
+.st-venture__body{display:grid;gap:var(--space-2);min-width:0}
+.st-venture__body .nu-text{color:var(--on-surface-2);max-width:var(--layout-prose)}
+.st-venture__meta{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.st-venture__link{color:inherit;text-decoration:underline;text-decoration-thickness:var(--border-hair);text-underline-offset:.16em;text-decoration-color:transparent}
+.st-venture__link::after{content:"";position:absolute;inset:0}
+.st-venture:hover .st-venture__link{text-decoration-color:currentColor}
+@media (min-width:960px){
+  .st-venture{grid-template-columns:var(--space-9) minmax(0,1fr) calc(var(--space-10) * 1.5)}
+  .st-venture__meta{grid-column:3;justify-content:flex-end}
+}
+/* Two features side by side (Launch Week: 300 Connect, hackathon). */
+.st-features{display:grid;gap:var(--space-9)}
+.st-feature{display:grid;gap:var(--space-4);align-content:start;justify-items:start}
+.st-feature .nu-text{max-width:var(--layout-prose)}
+.st-tags{display:flex;flex-wrap:wrap;gap:var(--space-2);margin:0;padding:0;list-style:none}
+.st-hack{width:100%;margin:var(--space-3) 0}
+@media (min-width:960px){.st-features{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--layout-gutter)}}
+/* Prize callout beside its facts. */
+.st-prize-row{display:grid;gap:var(--space-7)}
+.st-prize{display:grid;gap:var(--space-2);align-content:start}
+@media (min-width:960px){.st-prize-row{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter);align-items:start}.st-prize{grid-column:1 / span 4}.st-prize-row>.nu-key-value{grid-column:5 / -1}}
+/* Label/value rows on the reading edge. */
+.st-kv-rows{margin-top:var(--space-7)}
+@media (min-width:960px){.st-kv-rows{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}.st-kv-rows>.nu-key-value__row{grid-column:5 / -1}}
+/* Long rules and guides: Prose on the reading edge. */
+@media (min-width:960px){.st-policy{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--layout-gutter)}.st-policy>.nu-prose{grid-column:5 / -1}}
+.st-clause{padding-inline-start:var(--space-5)}
+/* Event archive. */
+.st-events{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(var(--space-10) * 2.75)),1fr));gap:var(--space-6) var(--layout-gutter);margin:0;padding:0;list-style:none}
