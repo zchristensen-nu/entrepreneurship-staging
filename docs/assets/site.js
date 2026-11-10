@@ -1,4 +1,4 @@
-// Disclosure behaviour for the presentational components: any button with aria-controls toggles its target's `hidden`.
+// Disclosure behaviour for the presentational components: any button with aria-controls AND aria-expanded toggles its target's `hidden` (tabs, pressed chips and pickers without aria-expanded are left to their own scripts).
 // Escape or a click outside closes what is open; focus returns to the button.
 const open = new Set();
 
@@ -10,7 +10,7 @@ function setOpen(button, target, state) {
 }
 
 document.addEventListener('click', (event) => {
-  const button = event.target.closest('button[aria-controls]:not([data-drawer-open])');
+  const button = event.target.closest('button[aria-controls][aria-expanded]:not([data-drawer-open])');
   const close = event.target.closest('[data-close]');
   if (close) {
     for (const b of open) if (document.getElementById(b.getAttribute('aria-controls'))?.contains(close)) { setOpen(b, document.getElementById(b.getAttribute('aria-controls')), false); b.focus(); }
@@ -142,13 +142,29 @@ if (tocs.length) {
     }
     const cur = document.querySelector('[data-toc-current]');
     const hit = links.find((a) => a.hash === `#${id}`);
-    if (cur && hit) cur.textContent = hit.textContent;
+    // Keep a space between a section number and its title ("IV. How…", not "IV.How…").
+    const num = hit?.querySelector('.nu-table-of-contents__num')?.textContent || '';
+    if (cur && hit) cur.textContent = num ? `${num} ${hit.textContent.slice(num.length).trim()}` : hit.textContent;
   };
-  const seen = new IntersectionObserver((entries) => {
-    const top = entries.filter((x) => x.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-    if (top) mark(top.target.id);
-  }, { rootMargin: '0px 0px -70% 0px' });
-  heads.forEach((h) => seen.observe(h));
+  // Scroll-spy: the current section is the last one whose top has passed just below the sticky bar
+  // (sections are tall, so an observer on whole sections kept the previous one marked).
+  const bar = document.querySelector('.st-quick[data-toc]');
+  let ticking = false;
+  const spy = () => {
+    ticking = false;
+    const line = (bar ? bar.getBoundingClientRect().bottom : 0) + innerHeight * 0.25;
+    let cur = heads[0];
+    for (const h of heads) if (h.getBoundingClientRect().top <= line) cur = h;
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) {
+      const last = heads[heads.length - 1];
+      if (last.getBoundingClientRect().top < innerHeight) cur = last;
+    }
+    if (cur) mark(cur.id);
+  };
+  addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(spy); } }, { passive: true });
+  addEventListener('resize', spy);
+  for (const a of links) a.addEventListener('click', () => mark(a.hash.slice(1)));
+  spy();
   for (const d of document.querySelectorAll('[data-toc] details')) d.addEventListener('click', (ev) => { if (ev.target.closest('a')) d.open = false; });
 }
 
@@ -285,3 +301,38 @@ for (const scope of document.querySelectorAll('[data-ge-dir]')) {
   apply();
 }
 // --- end ge ---
+
+// Fresh page loads open at the top (unless a #hash asks for a section); back/forward keeps its position.
+{
+  const nav = performance.getEntriesByType('navigation')[0];
+  if (!location.hash && (!nav || nav.type === 'navigate')) {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    scrollTo(0, 0);
+    addEventListener('load', () => scrollTo(0, 0), { once: true });
+  }
+}
+
+// Carousel ("st-reel"): previous/next scroll one card; buttons disable at either end. The track also scrolls natively (touch, trackpad, keys).
+for (const reel of document.querySelectorAll('.st-reel')) {
+  const track = reel.querySelector('.st-reel__track');
+  const prev = reel.querySelector('[data-reel-prev]');
+  const next = reel.querySelector('[data-reel-next]');
+  const step = () => (track.querySelector('.st-reel__item')?.getBoundingClientRect().width || track.clientWidth) + parseFloat(getComputedStyle(track).columnGap || 0);
+  const sync = () => {
+    prev.disabled = track.scrollLeft <= 2;
+    next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+  };
+  prev.addEventListener('click', () => track.scrollBy({ left: -step() }));
+  next.addEventListener('click', () => track.scrollBy({ left: step() }));
+  track.addEventListener('scroll', sync, { passive: true });
+  addEventListener('resize', sync);
+  sync();
+}
+
+// Rail paddles: a button with data-rail-step="±1" scrolls its rail's track by most of a viewport width.
+document.addEventListener('click', (event) => {
+  const b = event.target.closest('[data-rail-step]');
+  if (!b) return;
+  const track = b.closest('.nu-rail')?.querySelector('.nu-rail__track');
+  track?.scrollBy({ left: Number(b.dataset.railStep) * track.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+});

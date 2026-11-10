@@ -63,6 +63,8 @@ html:has(.nu-mobile-menu:not([hidden])){overflow:hidden}
 .st-tight.nu-media-text{padding-block:var(--space-7)}
 /* Quick links: InPageNav as a band between the hero and the first section. */
 .st-quick{position:static}
+/* An in-page jump bar (data-toc) follows the reader; a bar of links to other pages stays put. */
+.st-quick[data-toc]{position:sticky;top:0;z-index:var(--z-sticky);background:var(--surface);border-bottom:var(--border-hair) solid var(--line)}
 /* Program cards and the finder. */
 .st-program-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(var(--space-10) * 2.25)),1fr));gap:var(--space-7) var(--layout-gutter);margin:0;padding:0;list-style:none}
 .st-program-grid>li{display:grid}
@@ -177,10 +179,12 @@ html.st-locked{overflow:hidden}
 .ea-sibling{margin-inline:var(--layout-edge)}
 /* Team by office: CardGrid --grouped asks for six compact cards beside the heading from a 1200px grid, but the content width tops out at
    1184px (layout-max 1280 less two 48px edges), so it never gets there. Six from 1120px here; reported to the system. */
-@container (min-width:1120px){.ea-team .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(6,minmax(0,1fr))}}
+@container (min-width:1120px){.ea-team .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(5,minmax(0,1fr))}}
 /* A ContactItem in a taller grid row (the main office's address beside its phone) stretched its own rows, dropping the value away
    from its label. Reported to the system; held to the top here. */
 .st-contact .nu-contact-item,.ea-media .nu-contact-item{align-content:start}
+/* Emails: no mid-word breaks (avoids an orphaned "u"); break only at the <wbr> after @ if the line is too narrow */
+.st-contact .nu-contact-item__value,.st-contact .nu-contact-item__value .nu-link,.ea-media .nu-contact-item__value,.ea-media .nu-contact-item__value .nu-link{overflow-wrap:break-word}
 /* Leader names link to their bios (ea-13). FeaturedPerson has no linked-name style, so the underline shows on hover only, as StoryRow's titles do. */
 .ea-leaders .nu-featured-person__name a{text-decoration-color:transparent;transition:text-decoration-color var(--dur-fast) var(--ease-out)}
 .ea-leaders .nu-featured-person__name a:hover{text-decoration-color:currentColor}
@@ -247,3 +251,82 @@ html.st-locked{overflow:hidden}
 /* --- end ge --- */
 
 .st-nowrap { white-space: nowrap; }
+
+/* For media: phone column hugs its number so the email fits on one line */
+@media (min-width:720px){.ea-media .nu-contact-block__items{grid-template-columns:auto minmax(0,1fr);column-gap:var(--space-8)}}
+/* NGN wordmark in place of the text link */
+.st-ngn-link{display:inline-flex;color:var(--on-surface);padding-block:var(--space-1)}
+.st-ngn-wordmark{display:block;height:1.125rem;width:auto}
+.st-ngn-link:hover .st-ngn-wordmark polygon{translate:2px -2px}
+.st-ngn-wordmark polygon{transition:translate var(--dur-base) var(--ease-out)}
+/* Proof points carry a photo */
+.st-proof-media{display:block;overflow:hidden;margin-bottom:var(--space-4);background:var(--surface-sunken)}
+.st-proof-media .nu-image{display:block;width:100%;transition:scale var(--dur-slow) var(--ease-out)}
+.nu-proof-point:hover .st-proof-media .nu-image{scale:1.03}
+/* Split section headers: top-align heading and body copy (cap heights line up) instead of baseline-aligning */
+.nu-section-header--split{align-items:start}
+.nu-section-header--split>.nu-heading,.nu-section-header--split .nu-section-header__body>.nu-text:first-child{text-box:trim-start cap alphabetic}
+
+.st-rows .nu-link-row__media .nu-image[src*="Policy-Brief"]{object-position:top center}
+html:has(.st-quick[data-toc]){scroll-padding-top:calc(var(--space-8) + var(--space-5))}
+/* Carousels: "In the news" (press) and NGN most-read. Full container width, a scroll-snap row with previous/next buttons. */
+.st-reel{display:grid;gap:var(--space-6);min-width:0}
+.st-reel+.st-reel{padding-top:var(--space-4)}
+.st-reel__head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-5);padding-top:var(--space-4);border-top:var(--border-rule) solid var(--on-surface)}
+.st-reel__head .nu-heading{margin:0}
+.st-reel__brand{margin:0;line-height:1}
+.st-reel__brand .st-ngn-wordmark{height:clamp(1.125rem,.9rem + .6vw,1.5rem)}
+.st-reel__controls{display:flex;flex:none;gap:var(--space-2)}
+.st-reel__controls .nu-icon-button[disabled]{opacity:.35;pointer-events:none}
+.st-reel__track{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 2 * var(--layout-gutter)) / 3.25);gap:var(--layout-gutter);margin:0;padding:0 0 var(--space-4);list-style:none;
+  overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent}
+.st-reel--ngn .st-reel__track{grid-auto-columns:calc((100% - 2 * var(--layout-gutter)) / 3)}
+.st-reel__track:focus-visible{outline:var(--border-focus) solid var(--focus);outline-offset:var(--space-1)}
+.st-reel__item{display:grid;min-width:0;scroll-snap-align:start}
+.st-story{display:grid;align-content:start;gap:var(--space-3);border-top:0;padding-top:0}
+.st-story .st-proof-media{margin-bottom:var(--space-2)}
+.st-story__title{margin:0;text-wrap:pretty}
+.st-story:hover .st-story__title{color:var(--link-hover)}
+.st-reel__kind{display:block;font-size:var(--fs-label);font-weight:var(--fw-medium);line-height:var(--lh-title);letter-spacing:.02em;color:var(--on-surface-muted)}
+.st-proof-media{aspect-ratio:3/2}
+.st-proof-media--type{display:flex;align-items:flex-end;padding:var(--space-5);border:var(--border-hair) solid var(--line);background:var(--surface-sunken)}
+.st-proof-media--type>span{font-size:var(--fs-h2);font-weight:var(--fw-heading);line-height:var(--lh-heading);letter-spacing:var(--tracking-heading);color:var(--on-surface);text-wrap:balance}
+.st-proof-media--ngn{display:flex;align-items:flex-end;padding:var(--space-5);background:var(--surface);color:var(--on-surface)}
+.st-reel__ngn{display:block;height:var(--space-6);width:auto}
+@media (max-width:959px){.st-reel__track,.st-reel--ngn .st-reel__track{grid-auto-columns:calc((100% - var(--layout-gutter)) / 2.15)}}
+@media (max-width:719px){.st-reel__track,.st-reel--ngn .st-reel__track{grid-auto-columns:82%}}
+@media (prefers-reduced-motion:reduce){.st-reel__track{scroll-behavior:auto}}
+/* Expertise: link from each office to its team section */
+.st-office-team{margin-top:var(--space-2)}
+/* Team page: group heading above, portraits across the full container: 5 per row on desktop, 4 on tablets. */
+@media (min-width:720px){
+  .ea-team .nu-card-grid__group-head{grid-column:1 / -1;position:static}
+  .ea-team .nu-card-grid__group>.nu-card-grid__items{grid-column:1 / -1}
+  .ea-team .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact),
+  .ea-team .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (min-width:960px){
+  .ea-team .nu-card-grid--grouped .nu-card-grid__items:has(> li > .nu-person-card--compact),
+  .ea-team .nu-card-grid__items:has(> li > .nu-person-card--compact){grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+
+.ea-media .nu-contact-block__label .nu-arrow-link{margin-top:var(--space-3);justify-self:start}
+/* NGN text cards: no placeholder art. A ruled card with section, headline and byline, the byline pinned to the bottom so rows line up. */
+.st-story--text{grid-template-rows:auto 1fr auto;min-height:calc(var(--space-10) * 1.25);padding:var(--space-5);gap:var(--space-4);border:var(--border-hair) solid var(--line);border-top:var(--border-rule) solid var(--accent);background:var(--surface-raised,var(--surface))}
+.st-story--text .st-story__title{align-self:start}
+.st-story--text:hover{border-color:var(--line-strong);border-top-color:var(--accent)}
+/* Homepage "What we do": three tall photo cards (layout option A). */
+.st-office-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-7) var(--layout-gutter);margin:var(--space-7) 0 0;padding:0;list-style:none}
+@media (min-width:720px){.st-office-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.st-office-cards>li{display:grid;min-width:0}
+.st-office-card{display:grid;align-content:start;gap:var(--space-4);color:inherit;text-decoration:none}
+.st-office-card__media{display:block;aspect-ratio:4/5;overflow:hidden;background:var(--surface-sunken)}
+.st-office-card__media .nu-image{display:block;width:100%;height:100%;object-fit:cover;transition:scale var(--dur-slow) var(--ease-out)}
+.st-office-card:hover .st-office-card__media .nu-image{scale:1.03}
+.st-office-card .nu-heading,.st-office-card .nu-text{margin:0}
+.st-office-card .nu-text{color:var(--on-surface-2)}
+.st-office-card:hover .nu-heading{color:var(--link-hover)}
+.st-office-card:hover .st-office-card__cue .nu-icon{translate:var(--space-1) 0}
+.st-office-card:focus-visible{outline:var(--border-focus) solid var(--focus);outline-offset:var(--space-2)}
+@media (max-width:719px){.st-office-card__media{aspect-ratio:3/2}}
+@media (prefers-reduced-motion:reduce){.st-office-card__media .nu-image{transition:none}}
